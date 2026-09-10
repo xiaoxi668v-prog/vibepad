@@ -240,13 +240,18 @@ private final class InputInjector {
         let age = lastInputAt.map { max(0, Int(Date().timeIntervalSince($0) * 1_000)) }
         let object: [String: Any] = [
             "accessibilityTrusted": AXIsProcessTrusted(),
-            "helperVersion": "3.3.1",
+            "helperVersion": HelperInfo.version,
             "protocolVersion": Int(Wire.version),
             "lastInputAgeMs": age ?? NSNull(),
             "mouseButtons": Int(buttons),
             "modifiers": Int(heldModifiers),
         ]
         return (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
+    }
+
+    /// 供菜单栏状态面板使用；允许从其他线程调用。
+    func inputStatusSnapshot() -> (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) {
+        queue.sync { (lastInputAt, buttons, heldModifiers) }
     }
 
     private func updateModifiers(mask: UInt8, pressed: Bool) {
@@ -781,6 +786,11 @@ private final class ClientSession {
             send(type: .authenticationOK, sequence: packet.sequence,
                  payload: PairingCrypto.hmac(secret: secret, data: responseData))
             authenticated = true
+            StatusCenter.shared.sessionAuthenticated(
+                id: sessionID,
+                deviceName: pairingStore.deviceName(for: clientID),
+                endpoint: endpointHost(connection.endpoint)
+            )
             print("VibePad paired client authenticated: \(connection.endpoint)")
 
         case .pairRequest:
@@ -848,6 +858,11 @@ private final class ClientSession {
                 )
                 self.send(type: .pairAccept, sequence: packet.sequence, payload: proof)
                 self.authenticated = true
+                StatusCenter.shared.sessionAuthenticated(
+                    id: self.sessionID,
+                    deviceName: deviceName,
+                    endpoint: self.endpointHost(self.connection.endpoint)
+                )
                 self.pairingGate.close()
                 print("VibePad paired: \(deviceName) \(clientID.hexString)")
             }
@@ -867,9 +882,15 @@ private final class ClientSession {
         connection.send(content: Data(bytes) + payload, completion: .contentProcessed { _ in })
     }
 
+    private func endpointHost(_ endpoint: NWEndpoint) -> String {
+        if case .hostPort(let host, _) = endpoint { return "\(host)" }
+        return "\(endpoint)"
+    }
+
     private func stop() {
         guard !stopped else { return }
         stopped = true
+        StatusCenter.shared.sessionEnded(id: sessionID)
         touchBarSubscribed = false
         touchBar.stop()
         audioSink.stop(owner: sessionID)
@@ -893,6 +914,11 @@ private final class VibePadServer {
     init(pairingGate: PairingGate, pairingStore: PairingStore) {
         self.pairingGate = pairingGate
         self.pairingStore = pairingStore
+    }
+
+    /// 供菜单栏状态面板使用；线程安全（InputInjector 内部 queue.sync）。
+    func inputStatusSnapshot() -> (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) {
+        injector.inputStatusSnapshot()
     }
 
     func start() throws {
@@ -943,7 +969,7 @@ private final class VibePadServer {
 @MainActor
 private func secureMain() {
     let trusted = AXIsProcessTrusted()
-    print("VibePad Mac Helper v3.3.1 · VibePad aggregate microphone streaming")
+    print("VibePad Mac Helper v\(HelperInfo.version) · VibePad aggregate microphone streaming")
     if !trusted {
         print("需要辅助功能权限：系统设置 > 隐私与安全性 > 辅助功能，启用 VibePad Helper 后重启本程序。")
     }
@@ -953,8 +979,10 @@ private func secureMain() {
     application.setActivationPolicy(.accessory)
     application.finishLaunching()
     _ = AggregateMicrophone.ensureAvailable()
-    let menuBarController = MenuBarController(gate: pairingGate, store: pairingStore)
     let server = VibePadServer(pairingGate: pairingGate, pairingStore: pairingStore)
+    let menuBarController = MenuBarController(gate: pairingGate, store: pairingStore) {
+        server.inputStatusSnapshot()
+    }
     withExtendedLifetime((menuBarController, server)) {
         do {
             try server.start()
