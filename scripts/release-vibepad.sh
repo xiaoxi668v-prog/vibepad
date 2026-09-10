@@ -68,7 +68,7 @@ if [[ "$MODE" == "--install" ]]; then
   if [[ -d "$INSTALLED_HELPER" ]]; then
     ditto "$INSTALLED_HELPER" "$backup_dir/VibePad Helper.app"
   fi
-  installed_apk="$(adb shell pm path com.xiaoxi.vibepad 2>/dev/null | head -n 1 | tr -d '\r' | sed 's/^package://')"
+  installed_apk="$(adb shell pm path com.xiaoxi.vibepad 2>/dev/null | head -n 1 | tr -d '\r' | sed 's/^package://' || true)"
   if [[ -n "$installed_apk" ]]; then
     adb pull "$installed_apk" "$backup_dir/app-before-install.apk"
   fi
