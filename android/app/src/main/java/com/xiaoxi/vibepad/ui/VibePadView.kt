@@ -40,9 +40,11 @@ import java.util.Locale
 /**
  * 平板主界面。三套皮肤共用同一组组件与协议，只改变布局与色板：
  *
- * - [Skin.CLASSIC] 01 经典黑：顶部一行状态 + Touch Bar，左控制面板、右触控板。
- * - [Skin.GRAPHITE] 02 深空专业：状态栏、独立 Touch Bar 行、左触控右快捷键、底部 App Dock。
- * - [Skin.TITANIUM] 05 双手操控：状态栏、独立 Touch Bar 行、左 App 与编辑键、中央触控、右快捷键。
+ * 三套皮肤顶行一致（01 经典黑排布：左侧状态图标，右侧整行 Touch Bar），身体部分：
+ *
+ * - [Skin.CLASSIC] 01 经典黑：左控制面板、右触控板。
+ * - [Skin.GRAPHITE] 02 深空专业：左触控右快捷键、底部 App Dock。
+ * - [Skin.TITANIUM] 05 双手操控：左 App 与编辑键、中央触控、右快捷键。
  *
  * 手势语义、键位功能、Typeless 按住说话与发送行为在三套皮肤里完全一致。
  */
@@ -62,8 +64,6 @@ class VibePadView(
 
     private var config = store.current()
     private var palette = config.skin.palette
-    private var immersive = false
-    private var connectionDetail = "正在初始化"
     private var helperHealth = HelperHealth()
     private var microphoneState = MicrophoneStreamer.State.IDLE
     private var frontmostBundleId: String? = null
@@ -98,8 +98,6 @@ class VibePadView(
     }
 
     fun setConnectionDetail(detail: String) {
-        connectionDetail = detail
-        systemBar.connectionDetail = detail
         systemBar.refresh()
     }
 
@@ -177,7 +175,6 @@ class VibePadView(
         palette = updated.skin.palette
         touchBarStrip.setHeaderMode(updated.headerMode)
         if (skinChanged) {
-            immersive = false
             buildLayout()
         } else {
             renderApps()
@@ -189,25 +186,12 @@ class VibePadView(
 
     // region 布局
 
-    private fun createSystemBar(): SystemBarView {
-        val style = if (config.skin == Skin.CLASSIC) SystemBarView.Style.COMPACT else SystemBarView.Style.FULL
-        return SystemBarView(
-            context = context,
-            sinkProvider = sinkProvider,
-            onSettingsClick = onSettingsClick,
-            style = style,
-            onImmersiveToggle = if (style == SystemBarView.Style.FULL) ({ toggleImmersive() }) else null,
-        ).apply {
-            connectionDetail = this@VibePadView.connectionDetail
-            setHealth(helperHealth)
-            setImmersive(immersive)
-        }
-    }
-
-    private fun toggleImmersive() {
-        immersive = !immersive
-        systemBar.setImmersive(immersive)
-        rebuildBody()
+    private fun createSystemBar(): SystemBarView = SystemBarView(
+        context = context,
+        sinkProvider = sinkProvider,
+        onSettingsClick = onSettingsClick,
+    ).apply {
+        setHealth(helperHealth)
     }
 
     private fun rebuildBody() = buildLayout()
@@ -227,6 +211,7 @@ class VibePadView(
         trackpad.applyPalette(palette)
         touchBarStrip.setHeaderMode(config.headerMode)
         systemBar = createSystemBar()
+        systemBar.applyPalette(palette)
 
         when (config.skin) {
             Skin.CLASSIC -> buildClassic()
@@ -236,17 +221,22 @@ class VibePadView(
         setMicrophoneState(microphoneState)
     }
 
-    /** 01 经典黑：0.4.1 已验收的布局，改其它皮肤时不要动它。 */
-    private fun buildClassic() {
+    /** 三套皮肤共用的顶行：01 经典黑排布——左侧状态栏，右边整行 Touch Bar。 */
+    private fun buildHeaderRow(): View {
         touchBarStrip.applyPalette(palette, 0f)
         touchBarStrip.setPadding(dp(7), dp(3), 0, dp(3))
-        addView(LinearLayout(context).apply {
+        return LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setBackgroundColor(palette.background)
             addView(systemBar, LayoutParams(WRAP_CONTENT, MATCH_PARENT))
             addView(touchBarStrip, LayoutParams(0, MATCH_PARENT, 1f))
-        }, LayoutParams(MATCH_PARENT, dp(34)))
+        }
+    }
+
+    /** 01 经典黑：0.4.1 已验收的布局，改其它皮肤时不要动它。 */
+    private fun buildClassic() {
+        addView(buildHeaderRow(), LayoutParams(MATCH_PARENT, dp(34)))
 
         addView(LinearLayout(context).apply {
             orientation = HORIZONTAL
@@ -260,56 +250,34 @@ class VibePadView(
 
     /** 02 深空专业：左触控、右快捷键、底部 App Dock。 */
     private fun buildGraphite() {
-        touchBarStrip.applyPalette(palette, 12f)
-        touchBarStrip.setPadding(dp(6), dp(4), dp(6), dp(4))
-        addView(systemBar, LayoutParams(MATCH_PARENT, dp(46)))
-        addView(touchBarStrip, LayoutParams(MATCH_PARENT, dp(50)).apply {
-            marginStart = dp(16)
-            marginEnd = dp(16)
-        })
+        addView(buildHeaderRow(), LayoutParams(MATCH_PARENT, dp(34)))
         addView(LinearLayout(context).apply {
             orientation = HORIZONTAL
             setPadding(dp(16), dp(11), dp(16), 0)
             addView(trackpad, LayoutParams(0, MATCH_PARENT, 1f).apply { marginEnd = dp(11) })
-            if (!immersive) {
-                addView(buildCommandsPanel(columns = 5, keyHeight = 56, stackedVoice = false),
-                    LayoutParams(dp(268), MATCH_PARENT))
-            }
+            addView(buildCommandsPanel(columns = 5, keyHeight = 56, stackedVoice = false),
+                LayoutParams(dp(268), MATCH_PARENT))
         }, LayoutParams(MATCH_PARENT, 0, 1f))
-        if (!immersive) {
-            addView(buildAppDock(), LayoutParams(MATCH_PARENT, dp(80)).apply {
-                marginStart = dp(16)
-                marginEnd = dp(16)
-                topMargin = dp(11)
-                bottomMargin = dp(14)
-            })
-        } else {
-            addView(View(context), LayoutParams(MATCH_PARENT, dp(14)))
-        }
+        addView(buildAppDock(), LayoutParams(MATCH_PARENT, dp(80)).apply {
+            marginStart = dp(16)
+            marginEnd = dp(16)
+            topMargin = dp(11)
+            bottomMargin = dp(14)
+        })
     }
 
     /** 05 双手操控：左 App 与编辑键、中央触控、右快捷键与语音。 */
     private fun buildTitanium() {
-        touchBarStrip.applyPalette(palette, 12f)
-        touchBarStrip.setPadding(dp(6), dp(4), dp(6), dp(4))
-        addView(systemBar, LayoutParams(MATCH_PARENT, dp(46)))
-        addView(touchBarStrip, LayoutParams(MATCH_PARENT, dp(50)).apply {
-            marginStart = dp(15)
-            marginEnd = dp(15)
-        })
+        addView(buildHeaderRow(), LayoutParams(MATCH_PARENT, dp(34)))
         addView(LinearLayout(context).apply {
             orientation = HORIZONTAL
             setPadding(dp(15), dp(12), dp(15), dp(16))
-            if (!immersive) {
-                addView(buildTitaniumLeftPanel(), LayoutParams(dp(212), MATCH_PARENT).apply {
-                    marginEnd = dp(12)
-                })
-            }
+            addView(buildTitaniumLeftPanel(), LayoutParams(dp(212), MATCH_PARENT).apply {
+                marginEnd = dp(12)
+            })
             addView(trackpad, LayoutParams(0, MATCH_PARENT, 1f))
-            if (!immersive) {
-                addView(buildCommandsPanel(columns = 3, keyHeight = 60, stackedVoice = true),
-                    LayoutParams(dp(212), MATCH_PARENT).apply { marginStart = dp(12) })
-            }
+            addView(buildCommandsPanel(columns = 3, keyHeight = 60, stackedVoice = true),
+                LayoutParams(dp(212), MATCH_PARENT).apply { marginStart = dp(12) })
         }, LayoutParams(MATCH_PARENT, 0, 1f))
     }
 
