@@ -11,8 +11,8 @@ android {
         applicationId = "com.xiaoxi.vibepad"
         minSdk = 28
         targetSdk = 28
-        versionCode = 13
-        versionName = "0.4.1"
+        versionCode = 14
+        versionName = "0.5.0"
     }
 
     buildTypes {

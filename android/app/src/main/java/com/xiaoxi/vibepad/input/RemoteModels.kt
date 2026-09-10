@@ -7,6 +7,8 @@ data class HelperHealth(
     val lastInputAgeMs: Long? = null,
     val mouseButtons: Int = 0,
     val modifiers: Int = 0,
+    /** Mac 当前前台 App 的 bundle id，用于高亮常用 App；未知时为 null。 */
+    val frontmostApp: String? = null,
 ) {
     val inputUsable: Boolean
         get() = accessibilityTrusted && protocolVersion == 2
@@ -46,6 +48,8 @@ interface RemoteDataListener {
     fun onRemoteApp(app: RemoteApp) = Unit
     fun onAppCatalogFinished() = Unit
     fun onTouchBarFrame(frame: TouchBarFrame) = Unit
+    /** Mac 推来的界面配置 JSON（0x61），内容见 PadConfig。 */
+    fun onPadConfig(payload: String) = Unit
     fun onPairingCode(code: String) = Unit
     fun onPairingMessage(message: String, success: Boolean = false) = Unit
 }

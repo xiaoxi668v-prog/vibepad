@@ -2,7 +2,6 @@ package com.xiaoxi.vibepad.ui
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.os.Handler
@@ -32,6 +31,7 @@ class TrackpadView(
     private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
     private val tapTimeout = ViewConfiguration.getTapTimeout().toLong() + 80L
 
+    private var palette = Skin.CLASSIC.palette
     private var mode = Mode.IDLE
     private var twoFingerIntent = TwoFingerIntent.UNDECIDED
     private var downAt = 0L
@@ -96,23 +96,30 @@ class TrackpadView(
         setLayerType(LAYER_TYPE_HARDWARE, null)
     }
 
+    /** 皮肤只改变触控区的配色与圆角，手势识别与阈值三套完全一致。 */
+    fun applyPalette(value: SkinPalette) {
+        palette = value
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+        val radius = palette.padRadius * density
         bounds.set(0f, 0f, width.toFloat(), height.toFloat())
-        paint.color = Color.BLACK
-        canvas.drawRoundRect(bounds, 22f * density, 22f * density, paint)
+        paint.color = palette.pad
+        canvas.drawRoundRect(bounds, radius, radius, paint)
 
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = density
-        paint.color = if (sinkProvider().isConnected) Color.rgb(83, 181, 130) else Color.rgb(61, 69, 81)
+        paint.color = if (sinkProvider().isConnected) palette.padOnline else palette.padOutline
         canvas.drawRoundRect(
             density / 2f, density / 2f, width - density / 2f, height - density / 2f,
-            22f * density, 22f * density, paint,
+            radius, radius, paint,
         )
         paint.style = Paint.Style.FILL
 
         paint.textAlign = Paint.Align.CENTER
-        paint.color = Color.rgb(105, 115, 129)
+        paint.color = palette.padLabel
         paint.textSize = 16f * density
         canvas.drawText(if (dragPressed) "拖动中" else "TOUCHPAD", width / 2f, height / 2f, paint)
         paint.textSize = 12f * density

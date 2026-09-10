@@ -170,6 +170,17 @@ class WifiInputSink(
 
     override fun requestApps() = enqueue(Event(TYPE_APPS_REQUEST, ByteArray(0)))
 
+    /**
+     * 连接建立后握手用：把平板本地配置发给 Mac，Mac 比较 revision 后回一份 0x61。
+     * revision 大的一边胜出，两端最终收敛到同一份配置。
+     */
+    fun requestPadConfig(payload: String) =
+        enqueue(Event(TYPE_CONFIG_REQUEST, payload.toByteArray(Charsets.UTF_8)))
+
+    /** 平板本地改了配置：推给 Mac 持久化，并由 Mac 转发给其它已连接会话。 */
+    fun sendPadConfig(payload: String) =
+        enqueue(Event(TYPE_CONFIG_UPDATE, payload.toByteArray(Charsets.UTF_8)))
+
     fun setTouchBarSubscribed(enabled: Boolean) {
         touchBarSubscribed = enabled
         synchronized(touchBarFrameLock) {
@@ -397,6 +408,9 @@ class WifiInputSink(
                         TYPE_APPS_BEGIN -> if (connected) remoteDataListener.onAppCatalogStarted()
                         TYPE_APP_ITEM -> if (connected) parseRemoteApp(payload)
                         TYPE_APPS_END -> if (connected) remoteDataListener.onAppCatalogFinished()
+                        TYPE_CONFIG_PUSH -> if (connected) {
+                            remoteDataListener.onPadConfig(payload.toString(Charsets.UTF_8))
+                        }
                         TYPE_TOUCH_BAR_FRAME -> if (connected) parseTouchBarFrame(payload)
                         TYPE_TOUCH_BAR_FRAME_CHUNK -> if (connected) parseTouchBarFrameChunk(payload)
                     }
@@ -557,6 +571,7 @@ class WifiInputSink(
                 lastInputAgeMs = json.optLongOrNull("lastInputAgeMs"),
                 mouseButtons = json.optInt("mouseButtons", 0),
                 modifiers = json.optInt("modifiers", 0),
+                frontmostApp = json.optString("frontmostApp").takeIf(String::isNotBlank),
             ))
         } catch (error: Exception) {
             Log.w(TAG, "Invalid helper health payload", error)
@@ -873,6 +888,9 @@ class WifiInputSink(
         private const val TYPE_AUDIO_START = 0x54
         private const val TYPE_AUDIO_DATA = 0x55
         private const val TYPE_AUDIO_STOP = 0x56
+        private const val TYPE_CONFIG_REQUEST = 0x60
+        private const val TYPE_CONFIG_PUSH = 0x61
+        private const val TYPE_CONFIG_UPDATE = 0x62
         private const val TOUCH_PHASE_DOWN = 0
         private const val TOUCH_PHASE_DRAGGED = 1
         private const val TOUCH_PHASE_UP = 2

@@ -45,6 +45,9 @@ private enum PacketType: UInt8 {
     case audioStart = 0x54
     case audioData = 0x55
     case audioStop = 0x56
+    case configRequest = 0x60
+    case config = 0x61
+    case configUpdate = 0x62
 }
 
 private struct Packet {
@@ -68,6 +71,41 @@ private func uint32(_ data: Data, at offset: Int) -> UInt32 {
 
 private func uint64(_ data: Data, at offset: Int) -> UInt64 {
     UInt64(uint32(data, at: offset)) << 32 | UInt64(uint32(data, at: offset + 4))
+}
+
+/// Mac 当前前台 App。平板用它高亮常用 App；NSWorkspace 只在主线程访问，
+/// 网络线程读缓存值。
+final class FrontmostAppTracker {
+    static let shared = FrontmostAppTracker()
+    private let lock = NSLock()
+    private var cached: String?
+    private var observer: NSObjectProtocol?
+
+    var bundleID: String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return cached
+    }
+
+    @MainActor
+    func start() {
+        update(NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
+        guard observer == nil else { return }
+        observer = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            self?.update(app?.bundleIdentifier)
+        }
+    }
+
+    private func update(_ value: String?) {
+        lock.lock()
+        cached = value
+        lock.unlock()
+    }
 }
 
 private final class InputInjector {
@@ -238,7 +276,7 @@ private final class InputInjector {
     func healthPayload() -> Data {
         dispatchPrecondition(condition: .onQueue(queue))
         let age = lastInputAt.map { max(0, Int(Date().timeIntervalSince($0) * 1_000)) }
-        let object: [String: Any] = [
+        var object: [String: Any] = [
             "accessibilityTrusted": AXIsProcessTrusted(),
             "helperVersion": HelperInfo.version,
             "protocolVersion": Int(Wire.version),
@@ -246,6 +284,7 @@ private final class InputInjector {
             "mouseButtons": Int(buttons),
             "modifiers": Int(heldModifiers),
         ]
+        if let frontmost = FrontmostAppTracker.shared.bundleID { object["frontmostApp"] = frontmost }
         return (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
     }
 
@@ -356,9 +395,9 @@ private final class AppCatalog {
     private let lock = NSLock()
     private var cached: [InstalledApp]?
 
-    func load(completion: @escaping ([InstalledApp]) -> Void) {
+    func load(rescan: Bool = false, completion: @escaping ([InstalledApp]) -> Void) {
         lock.lock()
-        let existing = cached
+        let existing = rescan ? nil : cached
         lock.unlock()
         if let existing {
             completion(existing)
@@ -371,6 +410,14 @@ private final class AppCatalog {
             self.cached = apps
             self.lock.unlock()
             completion(apps)
+        }
+    }
+
+    /// 供菜单栏设置窗口列出可选 App；只暴露名称与 bundle id。
+    /// rescan 为 true 时重新扫盘，但不清空缓存：扫描期间 launch() 仍按旧列表放行。
+    func summaries(rescan: Bool, completion: @escaping ([PadAppSummary]) -> Void) {
+        load(rescan: rescan) { apps in
+            completion(apps.map { PadAppSummary(name: $0.name, bundleID: $0.bundleID) })
         }
     }
 
@@ -531,6 +578,7 @@ private final class ClientSession {
     private let pairingGate: PairingGate
     private let pairingStore: PairingStore
     private let audioSink: AudioSink
+    private let configStore: PadConfigStore
     private let sessionID: UUID
     private var buffer = Data()
     private var authenticated = false
@@ -552,6 +600,7 @@ private final class ClientSession {
         pairingGate: PairingGate,
         pairingStore: PairingStore,
         audioSink: AudioSink,
+        configStore: PadConfigStore,
         sessionID: UUID,
         onStop: @escaping () -> Void
     ) {
@@ -563,6 +612,7 @@ private final class ClientSession {
         self.pairingGate = pairingGate
         self.pairingStore = pairingStore
         self.audioSink = audioSink
+        self.configStore = configStore
         self.sessionID = sessionID
         self.onStop = onStop
     }
@@ -659,6 +709,16 @@ private final class ClientSession {
                     self.send(type: .appsEnd, sequence: packet.sequence)
                 }
             }
+        case .configRequest:
+            // 平板握手：带上自己的配置，revision 大的一方胜出，回一份当前配置。
+            sendPadConfig(mergePadConfig(packet.payload).merged, sequence: packet.sequence)
+        case .configUpdate:
+            // 平板改了配置：存下来，并由服务端转发给其它已连接会话。
+            // Mac 这边更新（平板的 revision 更旧）时回推一份，别让平板停在旧配置上。
+            let result = mergePadConfig(packet.payload)
+            if let incoming = result.incoming, !result.merged.sameContent(as: incoming) {
+                sendPadConfig(result.merged, sequence: packet.sequence)
+            }
         case .launchApp:
             guard let bundleID = String(data: packet.payload, encoding: .utf8),
                   bundleID.count <= 512 else { break }
@@ -701,6 +761,28 @@ private final class ClientSession {
                 reason: packet.payload[4]
             )
         default: break
+        }
+    }
+
+    private func mergePadConfig(_ payload: Data) -> (merged: PadConfig, incoming: PadConfig?) {
+        guard let incoming = PadConfig(payload: payload) else {
+            print("Ignoring malformed pad config from \(connection.endpoint)")
+            return (configStore.snapshot(), nil)
+        }
+        return (configStore.accept(incoming, from: sessionID), incoming)
+    }
+
+    private func sendPadConfig(_ config: PadConfig, sequence: UInt32 = 0) {
+        dispatchPrecondition(condition: .onQueue(queue))
+        guard let payload = config.payload, payload.count <= Wire.maxPayload else { return }
+        send(type: .config, sequence: sequence, payload: payload)
+    }
+
+    /// 由服务端在配置变化时调用（Mac 设置窗口改的，或别的平板推来的）。
+    func pushPadConfig(_ config: PadConfig) {
+        queue.async { [weak self] in
+            guard let self, self.authenticated, !self.stopped else { return }
+            self.sendPadConfig(config)
         }
     }
 
@@ -907,13 +989,33 @@ private final class VibePadServer {
     private let usageProvider = UsageProvider()
     private let pairingGate: PairingGate
     private let pairingStore: PairingStore
+    private let configStore: PadConfigStore
     private let audioSink = AudioSink()
     private var listener: NWListener?
     private var sessions: [UUID: ClientSession] = [:]
 
-    init(pairingGate: PairingGate, pairingStore: PairingStore) {
+    init(pairingGate: PairingGate, pairingStore: PairingStore, configStore: PadConfigStore) {
         self.pairingGate = pairingGate
         self.pairingStore = pairingStore
+        self.configStore = configStore
+        configStore.addObserver { [weak self] config, origin in
+            self?.broadcastConfig(config, excluding: origin)
+        }
+    }
+
+    /// 配置变化后推给所有已认证会话；发起方自己不用再收一遍。
+    private func broadcastConfig(_ config: PadConfig, excluding origin: UUID?) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            for (id, session) in self.sessions where id != origin {
+                session.pushPadConfig(config)
+            }
+        }
+    }
+
+    /// 供菜单栏设置窗口使用。
+    func loadAppSummaries(rescan: Bool, completion: @escaping ([PadAppSummary]) -> Void) {
+        appCatalog.summaries(rescan: rescan, completion: completion)
     }
 
     /// 供菜单栏状态面板使用；线程安全（InputInjector 内部 queue.sync）。
@@ -954,6 +1056,7 @@ private final class VibePadServer {
                 pairingGate: self.pairingGate,
                 pairingStore: self.pairingStore,
                 audioSink: self.audioSink,
+                configStore: self.configStore,
                 sessionID: sessionID
             ) { [weak self] in
                 self?.sessions.removeValue(forKey: sessionID)
@@ -975,15 +1078,27 @@ private func secureMain() {
     }
     let pairingGate = PairingGate()
     let pairingStore = PairingStore()
+    let configStore = PadConfigStore()
     let application = NSApplication.shared
     application.setActivationPolicy(.accessory)
     application.finishLaunching()
     _ = AggregateMicrophone.ensureAvailable()
-    let server = VibePadServer(pairingGate: pairingGate, pairingStore: pairingStore)
-    let menuBarController = MenuBarController(gate: pairingGate, store: pairingStore) {
-        server.inputStatusSnapshot()
+    FrontmostAppTracker.shared.start()
+    let server = VibePadServer(
+        pairingGate: pairingGate,
+        pairingStore: pairingStore,
+        configStore: configStore
+    )
+    let settingsWindow = SettingsWindowController(store: configStore) { rescan, completion in
+        server.loadAppSummaries(rescan: rescan, completion: completion)
     }
-    withExtendedLifetime((menuBarController, server)) {
+    let menuBarController = MenuBarController(
+        gate: pairingGate,
+        store: pairingStore,
+        inputStatus: { server.inputStatusSnapshot() },
+        openSettings: { MainActor.assumeIsolated { settingsWindow.show() } }
+    )
+    withExtendedLifetime((menuBarController, server, settingsWindow)) {
         do {
             try server.start()
             application.run()

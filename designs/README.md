@@ -35,5 +35,16 @@ HANDOFF.md、QA.md）。改 02/05 时优先编辑 `orbit-source/src/selected-fra
 
 ## 现行 App 实现对应
 
-当前 Android App（`android/`，Kotlin 原生 View）实现的是 01 经典黑。
-02/05 尚未在 App 中实现。
+当前 Android App（`android/`，Kotlin 原生 View）已经实现三套皮肤，可在设置里切换，
+也可以在 Mac 菜单栏「VibePad 设置…」里切换：
+
+| 设计 | App 内名称 | 实现 |
+| --- | --- | --- |
+| 01 经典黑 | 经典 | `Skin.CLASSIC`，配色与布局沿用 0.4.1 已上线版本 |
+| 02 深空专业 | 深空专业 | `Skin.GRAPHITE` |
+| 05 双手操控 | 双手操控 | `Skin.TITANIUM` |
+
+色板在 `android/app/src/main/java/com/xiaoxi/vibepad/ui/Skin.kt`，布局在同目录的
+`VibePadView.kt`。原型里本项目做不到的元素（固定 Touch Bar 标签、亮度/音量滑杆、
+Coding/日常模式、文字输入弹层、演示转写）按交接约定不实现，理由见
+`docs/HANDOFF.md` 第 20.2 节。

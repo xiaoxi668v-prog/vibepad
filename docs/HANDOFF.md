@@ -1018,3 +1018,102 @@ VibePad Helper SHA-256
   `/Users/shishuai/vibepad/backups/20260725-000217`；
 - ADB 1.6 秒长按回归显示录音 `00:02:57.924 rec start`，松手后
   `00:02:59.495 rec stop`，无崩溃日志。
+
+## 20. 2026-09-10 三套皮肤与 Mac 端配置（0.5.0 / Helper 3.5.0）
+
+源码已完成，**尚未在真机验收**。本节是这轮改动的完整交接，验收前请先读第 2 节的规则。
+
+### 20.1 三套皮肤
+
+`designs/skins/` 的三套设计全部落到 App 里，用「皮肤切换」实现，不是三个 App：
+
+| 皮肤 | 设计编号 | App 内名称 | 布局 |
+| --- | --- | --- | --- |
+| 经典黑 | 01 | 经典 | 顶部一行状态 + Touch Bar；左控制面板、右触控板（0.4.1 已上线的布局，未改动） |
+| 深空专业 | 02 | 深空专业 | 状态栏、独立 Touch Bar 行、左触控右快捷键、底部 App Dock |
+| 双手操控 | 05 | 双手操控 | 状态栏、独立 Touch Bar 行、左 App 与编辑键、中央触控、右快捷键与语音 |
+
+实现要点：
+
+- `ui/Skin.kt`：`Skin` 枚举与 `SkinPalette` 色板，取值来自
+  `designs/orbit-source/design/tokens.json`；经典黑逐值沿用 0.4.1 的常量，改其它皮肤时不要动它。
+- `ui/VibePadView.kt`：三种布局共用同一组组件（常用 App、快捷键网格、自定义快捷键条、
+  按住说话、发送）。手势语义、键位功能、Typeless 行为三套完全一致。
+- `ui/SystemBarView.kt`：状态栏两种排布（经典黑紧凑、02/05 完整）。
+- `ui/TouchBarStripView.kt`：从旧 `StatusHeaderView` 拆出的顶部条，含 Touch Bar 画面
+  解码、订阅生命周期与额度栏，三套皮肤共用。
+- `ui/TrackpadView.kt`：只增加 `applyPalette()`，识别逻辑与阈值一个字没动。
+
+### 20.2 原型里“做不到就不做”的部分
+
+设计原型是通用演示，本项目实际做不到或语义不同的元素一律不实现（第 1 项要求）：
+
+| 原型元素 | 处理 |
+| --- | --- |
+| Touch Bar 上的固定标签（新建对话 / 终端 / 后退…） | 不实现。本项目回传的是 Mac 原生 Touch Bar 画面，触摸按归一化坐标回送，显示什么由 Mac 决定 |
+| Touch Bar 上的亮度 / 音量滑杆 | 不实现，同上：真实 Touch Bar 画面里本来就有系统控件 |
+| Vibe Coding / 日常模式切换 | 不实现。本项目的快捷键集合是用户自定义条，没有第二套模式 |
+| 文字输入弹层、转写草稿与「等待发送」 | 不实现。协议只有按键事件，没有整段文本通道；语音走 Typeless，转写结果不回平板 |
+| 触控区底部的事件条与工具按钮 | 不实现。触控区是自绘 View，沉浸开关移到状态栏 |
+| 演示用设备名、6 ms、09:41、86%、固定转写 | 不使用。时间与电量取平板真实值，连接状态取真实链路状态 |
+
+真正做进来的原型能力：当前 App 高亮（Mac 回报前台 App）、沉浸触控（隐藏 App 与快捷键面板）、
+05 的 Command / Shift 锁定键（成对发送 keydown / keyup，断线、退后台、退出时释放）。
+
+### 20.3 配置同步协议（新增帧类型）
+
+在既有 v2 帧格式上新增三种类型，payload 都是 UTF-8 JSON：
+
+| Type | 方向 | 含义 |
+| --- | --- | --- |
+| `0x60` CONFIG_REQUEST | 平板 → Mac | 连接成功后的握手，带上平板本地配置 |
+| `0x61` CONFIG | Mac → 平板 | Mac 侧配置推送（握手回执，或 Mac / 其它平板改了配置） |
+| `0x62` CONFIG_UPDATE | 平板 → Mac | 平板本地改了配置 |
+
+JSON 结构（`ui/PadConfig.kt` 与 `PadConfigStore.swift` 逐字段对应）：
+
+```json
+{
+  "revision": 7,
+  "skin": "classic | graphite | titanium",
+  "headerMode": "touchbar | quota",
+  "apps": ["com.google.Chrome", "..."],
+  "shortcuts": [{"label": "格式化", "usage": 15, "modifiers": 8}],
+  "mouseSensitivity": 1.0,
+  "scrollSensitivity": 1.4
+}
+```
+
+冲突规则：`revision` 单调递增，本地每次修改 +1；收到的 `revision` **大于等于**本地
+且内容不同才覆盖本地。内容相同只对齐 `revision`，避免两端反复互推。Mac 收到平板配置后
+会广播给其它已连接会话（跳过发起方），因此多台平板也会收敛到同一份。
+
+Mac 侧配置存放在 `~/Library/Application Support/VibePad/pad-config.json`。
+
+心跳回执（`0x21` PONG）的健康 JSON 增加 `frontmostApp` 字段，值为 Mac 当前前台 App 的
+bundle id，仅用于高亮常用 App；`FrontmostAppTracker` 在主线程监听 NSWorkspace 通知，
+网络线程只读缓存值。
+
+### 20.4 Mac 端配置
+
+菜单栏新增「VibePad 设置…」，打开 `SettingsWindow.swift` 的窗口，可以直接在 Mac 上配置：
+
+- 界面皮肤（经典 / 深空专业 / 双手操控）；
+- 顶部区域（Mac Touch Bar 画面 / 本地额度栏）；
+- 常用 App：3 × 3 下拉框，顺序即平板上的显示顺序，可留空；「重新扫描 Mac 上的 App」
+  会重新扫盘但不清空缓存，扫描期间 `launch()` 仍按旧列表放行；
+- 鼠标与滚动灵敏度（松手才提交，避免拖动过程刷 revision）。
+
+平板上的改动会回写窗口，Mac 上的改动会立刻推给已连接的平板。自定义快捷键仍只在平板上编辑，
+Mac 只负责存储与转发。
+
+### 20.5 验收清单（真机，尚未执行）
+
+1. 三套皮肤逐一切换：切换后触控、快捷键、按住说话、发送、Touch Bar 触摸全部照旧可用；
+2. 02 的底部 Dock 与 05 的左侧 App 区都能高亮 Mac 当前前台 App；
+3. 05 的 Command / Shift 锁定：锁定后点方向键验证组合键；断网与退到后台后确认修饰键已释放
+   （Mac 菜单栏「按住中」一行应为空）；
+4. 沉浸触控进入 / 退出，Touch Bar 与状态栏保留；
+5. Mac 设置窗口改皮肤、改常用 App，平板 1 秒内跟随；平板改回来，Mac 窗口同步刷新；
+6. Helper 重启后配置仍在（读 `pad-config.json`）；
+7. 触控目标不小于 48dp，横屏，字体缩放下不溢出（浏览器检查不替代真机）。
