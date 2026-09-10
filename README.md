@@ -9,6 +9,7 @@
 ```text
 android/     安卓平板 App（Kotlin，包名 com.xiaoxi.vibepad）
 mac-helper/  Mac 菜单栏 Helper（Swift，Bundle ID com.xiaoxi.vibepad.helper）
+designs/     平板端三套 UI 皮肤（01 经典黑 / 02 深空专业 / 05 双手操控）与设计源码
 scripts/     发布脚本与 LaunchAgent 模板
 docs/        交接文档（协议、坑、验收流程）
 dist/        发布产物（本地产出，不进 git）

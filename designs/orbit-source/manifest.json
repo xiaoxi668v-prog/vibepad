@@ -1,0 +1,369 @@
+{
+  "version": "2026-09-10",
+  "selectedDesigns": [
+    "02 Graphite Pro",
+    "05 Titanium Duo"
+  ],
+  "files": [
+    {
+      "path": "02-graphite-pro.html",
+      "bytes": 75684,
+      "sha256": "2c9367580543ec91b7578934d7d83a5e0018f5f4203e93a1d177dfc810303902"
+    },
+    {
+      "path": "05-titanium-duo.html",
+      "bytes": 75684,
+      "sha256": "38dc5eb5f2090572d172696306b460360a39a66c9c8f0272ede8085abbb013ff"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2777,
+      "sha256": "ec6334703d18cd3a96609231286cd66ec82c4260f1ae6cb823b94aed4ad690b6"
+    },
+    {
+      "path": "assets/LICENSE-lucide.txt",
+      "bytes": 3208,
+      "sha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57"
+    },
+    {
+      "path": "assets/icons/arrow-left.svg",
+      "bytes": 236,
+      "sha256": "9f32d8622cc66ea5706fc30bb0a2702e67f3f774c9180ac1a40828cd45ddb7f7"
+    },
+    {
+      "path": "assets/icons/arrow-right.svg",
+      "bytes": 235,
+      "sha256": "c1d5d84d8c6c56f08121c3fb3fa13cd6436339dd898cd2f1678fde3372932731"
+    },
+    {
+      "path": "assets/icons/audio-lines.svg",
+      "bytes": 307,
+      "sha256": "8827fbdbde71ca2d3089134e3a03fa439284f67dc51bddfbb5e255aa0912ce5c"
+    },
+    {
+      "path": "assets/icons/bookmark.svg",
+      "bytes": 320,
+      "sha256": "bc7e9be5bcec31cf4a3db94fe6a671b981e795a3f5277cc85e18fefc84b82ee1"
+    },
+    {
+      "path": "assets/icons/check.svg",
+      "bytes": 217,
+      "sha256": "cd6dd670bc7ce20c7a42d2d5aabc3eb640faa897af03f2e2a23874e946f5e69a"
+    },
+    {
+      "path": "assets/icons/command.svg",
+      "bytes": 273,
+      "sha256": "caa781b1b2d7558dc5181cd4eaf5fa2629c7baab9659fa608f82c7dae49e6de5"
+    },
+    {
+      "path": "assets/icons/copy.svg",
+      "bytes": 313,
+      "sha256": "14980a4a9597ac9dcd3502332b087853d85d46b7aa0cbd411b0ebec39ac3f7eb"
+    },
+    {
+      "path": "assets/icons/corner-down-left.svg",
+      "bytes": 250,
+      "sha256": "af3066b62b62ffa147eb4f501633a76e9c43c4f0205cdc702bc2f289a11598fd"
+    },
+    {
+      "path": "assets/icons/delete.svg",
+      "bytes": 361,
+      "sha256": "440dea98a980c07d10219cdb07a3a8b220f6aaf435e4d00790cd732ec11e8911"
+    },
+    {
+      "path": "assets/icons/ellipsis.svg",
+      "bytes": 282,
+      "sha256": "b8561659489ffdbc003d9c5575d6b0329ddba33590ff2139a57b6ea7e3c973fa"
+    },
+    {
+      "path": "assets/icons/expand.svg",
+      "bytes": 360,
+      "sha256": "43438791b5cb2f653248f5be421a12c91bedc28503b8e9134ccbc1f619368db1"
+    },
+    {
+      "path": "assets/icons/folder-plus.svg",
+      "bytes": 359,
+      "sha256": "75f3da26cf5108da84e3fb36c7dc3d0e19370519d430b8cfac7624df1868eae4"
+    },
+    {
+      "path": "assets/icons/forward.svg",
+      "bytes": 253,
+      "sha256": "5c1d9b56091a98bd4a747ccead73098ceb87e63fe7e70a4c007aab4bdb85088d"
+    },
+    {
+      "path": "assets/icons/hand.svg",
+      "bytes": 449,
+      "sha256": "d089beb58e46efa5c577b59383d523707c5e5de28978ea103eba1b72b1f7985f"
+    },
+    {
+      "path": "assets/icons/keyboard.svg",
+      "bytes": 407,
+      "sha256": "6e56c88892235f9f26aecffb828588460c4628f6a780f05e5050925e6e5f1694"
+    },
+    {
+      "path": "assets/icons/laptop.svg",
+      "bytes": 379,
+      "sha256": "c843239701356f316ad5d6bd4a54c3f52c46aa001712fc917bf2f021ceac2a71"
+    },
+    {
+      "path": "assets/icons/layers.svg",
+      "bytes": 480,
+      "sha256": "cc79b76304a873e2a89dad46780df28570835687e2d803b3da9f81ee642bceeb"
+    },
+    {
+      "path": "assets/icons/layout-grid.svg",
+      "bytes": 382,
+      "sha256": "e32e11ffe6d0b5d892afef933020dc6d5ddd7d03416e47a8383103a8e6779c3c"
+    },
+    {
+      "path": "assets/icons/maximize-2.svg",
+      "bytes": 275,
+      "sha256": "1c032e8833783c2ac4f8bc443d34474021d4c4bb5ffe120f1174bc3f8a656762"
+    },
+    {
+      "path": "assets/icons/message-square-plus.svg",
+      "bytes": 355,
+      "sha256": "ec71bf1322c83b7897360d9e6adf44e9430c7065b2806f472ae529186d781f0a"
+    },
+    {
+      "path": "assets/icons/messages-square.svg",
+      "bytes": 431,
+      "sha256": "94a0625ac474171905d71ca8e93d16a2860433990cbde2e4e2cd7161351e1622"
+    },
+    {
+      "path": "assets/icons/mic.svg",
+      "bytes": 296,
+      "sha256": "4117761bbf3bdb5a47958ef50fa52ee348f7633ab618285fa02338a5ef546b12"
+    },
+    {
+      "path": "assets/icons/minimize-2.svg",
+      "bytes": 277,
+      "sha256": "8af7c574a03938395d34d491ccc30995aec60338f857df4d958157c39a2e446e"
+    },
+    {
+      "path": "assets/icons/mouse-pointer-2.svg",
+      "bytes": 334,
+      "sha256": "320cb8685a68a10065045939680db5ba376adef4c9f35711fe9ab4bc91cf0b60"
+    },
+    {
+      "path": "assets/icons/mouse.svg",
+      "bytes": 258,
+      "sha256": "03f0d701f3524530d3780256c25841794862aefa027cdb3d1027a5ac6b9cca42"
+    },
+    {
+      "path": "assets/icons/music-2.svg",
+      "bytes": 244,
+      "sha256": "159c0393c0ac9368f12b8e992732b18c38caf69524aa98a54a5466b56f7e460e"
+    },
+    {
+      "path": "assets/icons/music.svg",
+      "bytes": 278,
+      "sha256": "2e6fd7b698ae66b2a264b541bf1244774dc5b990e451e8b35fd8ddb835166d70"
+    },
+    {
+      "path": "assets/icons/panels-top-left.svg",
+      "bytes": 277,
+      "sha256": "6d06e9d50eba549cf40fc7e2e6d2279cfc09e6b204b9e38c5b0d9b2e9b5bc03a"
+    },
+    {
+      "path": "assets/icons/pause.svg",
+      "bytes": 287,
+      "sha256": "4ec37348f30bc1d9abeff7f311285c5f6cd58cb1946ed4d6a0dbd14c7663bb11"
+    },
+    {
+      "path": "assets/icons/play.svg",
+      "bytes": 284,
+      "sha256": "630b51c4aa5151fa09cda2c806a338dcee07cbe395b8df0cb78a36984b63bd49"
+    },
+    {
+      "path": "assets/icons/radio.svg",
+      "bytes": 399,
+      "sha256": "9d3a13fcd3ebf98d47d25d2d4ab92c245f855eeda829b12928d35d3c6a1e9b72"
+    },
+    {
+      "path": "assets/icons/rectangle-horizontal.svg",
+      "bytes": 239,
+      "sha256": "1d7a271443708f140500f3cb80ae5d39cc584330e8cbcebfa0509c3e45ae1517"
+    },
+    {
+      "path": "assets/icons/rotate-cw.svg",
+      "bytes": 273,
+      "sha256": "03a9bb17c807befa6a36f3256a93eb98b6ec86d9bc5290ec468e44d0503caa2a"
+    },
+    {
+      "path": "assets/icons/screen-share.svg",
+      "bytes": 341,
+      "sha256": "42a4b5c1c5fc0efbf729ac960de3fd3c7754f4f289e187f450493e710be6eb57"
+    },
+    {
+      "path": "assets/icons/search.svg",
+      "bytes": 249,
+      "sha256": "6795df9032cc053cf63ab53ed3c8c0b7a33e3004149a179c6ef6086a871b0efb"
+    },
+    {
+      "path": "assets/icons/send.svg",
+      "bytes": 367,
+      "sha256": "8a8753373900105133c3b357187ad1f6c063686dea10d60666f51ab58d0dd350"
+    },
+    {
+      "path": "assets/icons/settings-2.svg",
+      "bytes": 290,
+      "sha256": "c4f61f3e48af9a91d46825d305c9e0575211e35e9dca8b622afd4f9653da983d"
+    },
+    {
+      "path": "assets/icons/settings.svg",
+      "bytes": 560,
+      "sha256": "830d53e72798ecd8e6ac5a84dafe39d02efa4e07259b6a09cb802fc1fdb0960e"
+    },
+    {
+      "path": "assets/icons/skip-back.svg",
+      "bytes": 309,
+      "sha256": "fdf10ea3f2cb458a15f541d938f66292dd2d05f61606b06a4e0e7df0555b8dd9"
+    },
+    {
+      "path": "assets/icons/skip-forward.svg",
+      "bytes": 307,
+      "sha256": "01f29ade396c6004fba2f1c72f2f215dfd1995969d9f2bce956cd7248f463fef"
+    },
+    {
+      "path": "assets/icons/sliders-horizontal.svg",
+      "bytes": 368,
+      "sha256": "317af86116c89567c96ab6c7abe69ce2ed3302444e2ffb9893c3180ad8dfdb3f"
+    },
+    {
+      "path": "assets/icons/space.svg",
+      "bytes": 244,
+      "sha256": "f0a7498a09e68f74096a9b86265a9a9e7d1f53dd6d490a71b96b39d6a31d4ba9"
+    },
+    {
+      "path": "assets/icons/star.svg",
+      "bytes": 566,
+      "sha256": "f2f426cdfad0ea3643450c422750b6442e15ce907d978b228f0d5554d2274a28"
+    },
+    {
+      "path": "assets/icons/sun.svg",
+      "bytes": 431,
+      "sha256": "29d13840435a370e76e84a60548a5a49d1c2ef1511e741ae0a215e889479e024"
+    },
+    {
+      "path": "assets/icons/terminal.svg",
+      "bytes": 235,
+      "sha256": "21b1fca0401fc487f9cb87df00dcdc4d0b15e23c103085e9b20ae664546a4135"
+    },
+    {
+      "path": "assets/icons/video.svg",
+      "bytes": 324,
+      "sha256": "d3379e6ddfcd7375ffa82d8b88607abe5b3d6f6d2bd41edfe577f353610cd295"
+    },
+    {
+      "path": "assets/icons/volume-1.svg",
+      "bytes": 401,
+      "sha256": "800d8c1e29dfc74c252b6d1a4222aaf952e6c9d5ffc3e9b915ad171403832094"
+    },
+    {
+      "path": "assets/icons/volume-2.svg",
+      "bytes": 446,
+      "sha256": "84a8d1f833099aa9c1a9a096152362bcfb1375d5dbff32411f1e7b5c3770089e"
+    },
+    {
+      "path": "assets/icons/volume-x.svg",
+      "bytes": 446,
+      "sha256": "60c7ddec458f4018f5b54b386c470dc4b90170552c0e37865eebd832213a2ee1"
+    },
+    {
+      "path": "assets/icons/volume.svg",
+      "bytes": 370,
+      "sha256": "4549a4c276fcb76d652f8b3338ce57fcd05667b3994ba6a0b0cc72cac556a422"
+    },
+    {
+      "path": "assets/icons/x.svg",
+      "bytes": 234,
+      "sha256": "41222aaea109251b03ab6c06dbcee4c3db84f9cbb9cfdca377e7596fe4b9154f"
+    },
+    {
+      "path": "design/HANDOFF.md",
+      "bytes": 11838,
+      "sha256": "57878a1702bf554262746c9bec751edb1939adf81dcb6a5cf7efefd0dec6b31e"
+    },
+    {
+      "path": "design/QA.md",
+      "bytes": 1905,
+      "sha256": "4cbf87b3032591cbce9436687d6e1c8b620737ba51b459305ba001536f56c768"
+    },
+    {
+      "path": "design/measurements.json",
+      "bytes": 2643,
+      "sha256": "0ea4e8014defb5ce37693b76407ef924d9f5c2b93e8931eff637200a3bf3630e"
+    },
+    {
+      "path": "design/tokens.json",
+      "bytes": 2700,
+      "sha256": "eec0364b093c524c3b9c618f3080af9d54f64dd55831b8800d4779b1ec3f18a6"
+    },
+    {
+      "path": "index.html",
+      "bytes": 75679,
+      "sha256": "0154a1ff954c0d75c2a2e88f73014ab4da4970d3e3c79f9c20c6e4c7edd5ab4b"
+    },
+    {
+      "path": "screens/02-graphite-chrome.png",
+      "bytes": 189766,
+      "sha256": "50d7753423d0b220745be63b4b26caff7a6f3b1f93d5ff0ec94f9cd0f7c8e5fb"
+    },
+    {
+      "path": "screens/02-graphite-main.png",
+      "bytes": 188781,
+      "sha256": "e4d010eab1de1ea56557a734b2bc001a5f62b0eb8edeff9ee5b4079c3aa97603"
+    },
+    {
+      "path": "screens/02-graphite-settings.png",
+      "bytes": 198425,
+      "sha256": "97860ab0ddfff8d7d279e2d95c407689bf1135e891c5d858b49ab992c0e01cd5"
+    },
+    {
+      "path": "screens/05-titanium-chrome.png",
+      "bytes": 207150,
+      "sha256": "6a385fde43652c1111e8b4e1cb1acd190f3b851194a951ead86b7c7afb3ffdc2"
+    },
+    {
+      "path": "screens/05-titanium-main.png",
+      "bytes": 206379,
+      "sha256": "d06f49c87f15d544936c3bf14a395b1eb2a9ab2bcdc4ed78689242b08cf1ab9d"
+    },
+    {
+      "path": "screens/05-titanium-settings.png",
+      "bytes": 194611,
+      "sha256": "f9beabdb4141d98092e1634f770e045c31c24d07f538c894b89590cdd71a92b9"
+    },
+    {
+      "path": "src/icons.js",
+      "bytes": 9957,
+      "sha256": "a3ec00d66b140ed245a92ef13a8c502642aa09b3e874661fa6e2929059090bee"
+    },
+    {
+      "path": "src/markup.html",
+      "bytes": 589,
+      "sha256": "24429a4544b41c98e53a30b47341d8951297eec512b5269d760abf79a06e13f6"
+    },
+    {
+      "path": "src/orbit-ui.css",
+      "bytes": 38552,
+      "sha256": "402f823148a8b727c704277fc2d0109b74662916a08724d71e55dfee6704426d"
+    },
+    {
+      "path": "src/orbit-ui.js",
+      "bytes": 26122,
+      "sha256": "72200784fd0e90ae60877b721448a7d5d97c360d9dbae16989c68d2cca2c082e"
+    },
+    {
+      "path": "src/selected-fragment.html",
+      "bytes": 65298,
+      "sha256": "d8c7516a1e9e76adb9003f4dc53fa5799fb1613c6a1fe02f7ca600763772af7f"
+    },
+    {
+      "path": "tools/build.py",
+      "bytes": 1670,
+      "sha256": "f485e4efefc2bf900db34c27c5e8289f50d02d94c8e594ffb8fb9da8cfad2f5e"
+    }
+  ]
+}

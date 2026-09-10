@@ -1,0 +1,545 @@
+<div id="orbit-design-study" data-initial-design="graphite" aria-label="Orbit UI · 已选方案 02 与 05">
+  <nav class="design-switcher" aria-label="选择设计方案"></nav>
+  <div class="design-heading"><div><span class="design-index"></span><h2></h2></div><span class="design-property"></span></div>
+  <div class="orbit-device" data-design="graphite" aria-label="安卓平板触控应用交互原型"></div>
+  <div class="prototype-foot"><span>交互演示 · 不连接实际电脑</span><span>切换应用，体验 Touch Bar 联动；在触控区拖动试试。</span></div>
+</div>
+<style>
+#orbit-design-study { --study-text:light-dark(#202126,#f1f1f3); --study-muted:light-dark(#74757c,#a4a4ab); --study-line:light-dark(#e6e6e9,#38383c); font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue",sans-serif; color:var(--study-text); width:100%; padding:4px 0 6px; -webkit-font-smoothing:antialiased; }
+#orbit-design-study * { box-sizing:border-box; }
+#orbit-design-study button, #orbit-design-study input, #orbit-design-study textarea { font:inherit; }
+#orbit-design-study button { cursor:pointer; -webkit-tap-highlight-color:transparent; line-height:1.3; }
+#orbit-design-study button:disabled { cursor:default; opacity:.38; }
+#orbit-design-study button:focus-visible { outline:3px solid #659eeb; outline-offset:3px; }
+#orbit-design-study .design-switcher { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+#orbit-design-study .design-choice { border:1px solid var(--study-line); background:transparent; border-radius:13px; padding:12px; color:var(--study-text); display:flex; align-items:center; gap:9px; text-align:left; min-height:58px; transition:background .2s,border-color .2s; }
+#orbit-design-study .design-choice[aria-pressed="true"] { background:light-dark(#f2f3f5,#2a2a2e); border-color:light-dark(#9b9da3,#8b8b91); }
+#orbit-design-study .design-swatch { width:26px; height:31px; flex-shrink:0; border-radius:8px; border:1px solid #0000000e; box-shadow:inset 0 1px 1px #ffffff70; }
+#orbit-design-study .design-choice small { display:block; font-size:10px; letter-spacing:1.2px; line-height:1.2; margin-bottom:4px; color:var(--study-muted); }
+#orbit-design-study .design-choice strong { display:block; font-size:13px; font-weight:500; white-space:nowrap; }
+#orbit-design-study .design-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:22px 1px 17px; }
+#orbit-design-study .design-heading>div { display:flex; align-items:center; gap:12px; }
+#orbit-design-study .design-index { font-size:11px; font-weight:500; letter-spacing:1px; color:var(--study-muted); }
+#orbit-design-study .design-heading h2 { font-size:18px; font-weight:500; letter-spacing:-.5px; margin:0; line-height:1.3; }
+#orbit-design-study .design-property { font-size:11px; color:var(--study-muted); }
+#orbit-design-study .prototype-foot { padding:13px 2px 0; color:var(--study-muted); font-size:11px; line-height:1.6; display:flex; gap:10px; justify-content:space-between; flex-wrap:wrap; }
+#orbit-design-study .orbit-device { --o-bg:#f2f3f5; --o-panel:#fcfcfd; --o-text:#25272d; --o-sub:#7b7f87; --o-line:#e5e7eb; --o-key:#f0f1f4; --o-key-hover:#e3e7ee; --o-accent:#2764d9; --o-accent-soft:#e8effc; --o-accent-text:#fff; --o-pad:#f9fafb; --o-icon:#696f7a; --o-green:#3c9168; --o-shadow:0 2px 5px #26334b04,0 10px 24px #26334b04; --o-radius:22px; color-scheme:light; background:var(--o-bg); color:var(--o-text); border:1px solid #dadce2; border-radius:30px; overflow:hidden; isolation:isolate; position:relative; box-shadow:0 16px 50px #131d3210,0 2px 8px #111a2f08; }
+#orbit-design-study .systembar { height:70px; padding:0 24px; display:flex; align-items:center; justify-content:space-between; gap:14px; }
+#orbit-design-study .orbit-brand { display:flex; align-items:center; gap:10px; font-size:16px; letter-spacing:-.5px; font-weight:500; }
+#orbit-design-study .orbit-mark { display:inline-block; width:24px; height:24px; border:1.7px solid currentColor; border-radius:50%; position:relative; transform:rotate(-32deg); }
+#orbit-design-study .orbit-mark:before { content:""; position:absolute; width:11px; height:29px; border:1.3px solid currentColor; border-radius:50%; left:5px; top:-4px; }
+#orbit-design-study .orbit-mark:after { content:""; width:5px; height:5px; position:absolute; border-radius:50%; background:var(--o-bg); border:1.4px solid currentColor; right:-2px; top:4px; }
+#orbit-design-study .mode-control { border:1px solid var(--o-line); background:var(--o-key); padding:3px; border-radius:11px; display:flex; gap:3px; margin-left:12px; }
+#orbit-design-study .mode-control button { font-size:11px; min-height:29px; padding:0 12px; border:0; border-radius:7px; background:transparent; color:var(--o-sub); white-space:nowrap; }
+#orbit-design-study .mode-control button[aria-pressed="true"] { background:var(--o-panel); color:var(--o-text); box-shadow:0 1px 5px #0000000d; }
+#orbit-design-study .system-left, #orbit-design-study .system-right { display:flex; align-items:center; gap:14px; }
+#orbit-design-study .system-right { gap:11px; }
+#orbit-design-study .connection { background:transparent; border:0; color:var(--o-text); padding:6px 2px; display:flex; gap:7px; align-items:center; font-size:11px; white-space:nowrap; }
+#orbit-design-study .online-dot { width:5px; height:5px; border-radius:50%; background:var(--o-green); display:inline-block; box-shadow:0 0 0 3px color-mix(in srgb,var(--o-green) 10%,transparent); }
+#orbit-design-study .connection-detail { color:var(--o-sub); font-size:10px; }
+#orbit-design-study .time { font-size:12px; font-weight:500; font-variant-numeric:tabular-nums; }
+#orbit-design-study .system-status { display:flex; align-items:center; gap:6px; color:var(--o-icon); font-size:10px; }
+#orbit-design-study .battery-shape { width:22px; height:11px; padding:1.5px; display:block; border:1px solid currentColor; border-radius:3px; position:relative; }
+#orbit-design-study .battery-shape:before { content:""; display:block; width:86%; height:100%; border-radius:1px; background:currentColor; }
+#orbit-design-study .battery-shape:after { content:""; position:absolute; width:2px; height:4px; border-radius:0 1px 1px 0; background:currentColor; right:-4px; top:2.5px; }
+#orbit-design-study .icon-button { width:32px; height:32px; border:0; border-radius:9px; background:transparent; color:var(--o-icon); display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+#orbit-design-study .icon-button:hover { background:var(--o-key); }
+#orbit-design-study svg.lucide { width:var(--o-icon-size,17px)!important; height:var(--o-icon-size,17px)!important; stroke-width:1.7; flex-shrink:0; }
+#orbit-design-study .workspace { display:grid; grid-template-columns:274px minmax(0,1fr); grid-template-rows:53px 246px 264px; grid-template-areas:"bar bar" "apps pad" "keys pad"; padding:0 18px 18px; gap:13px; }
+#orbit-design-study .o-panel { background:var(--o-panel); border:1px solid var(--o-line); border-radius:var(--o-radius); box-shadow:var(--o-shadow); }
+#orbit-design-study .panel-heading { display:flex; align-items:center; justify-content:space-between; gap:5px; min-height:22px; margin-bottom:12px; }
+#orbit-design-study .panel-heading h3 { margin:0; font-size:13px; font-weight:500; letter-spacing:0; }
+#orbit-design-study .panel-heading .subtle { color:var(--o-sub); font-size:10px; }
+#orbit-design-study .panel-heading .icon-button { width:24px; height:24px; }
+#orbit-design-study .apps-panel { grid-area:apps; padding:14px 15px 12px; min-width:0; }
+#orbit-design-study .app-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); column-gap:8px; row-gap:6px; }
+#orbit-design-study .app-button { border:0; background:transparent; color:var(--o-sub); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:3px 1px; min-height:47px; position:relative; }
+#orbit-design-study .app-button:hover { background:var(--o-key); }
+#orbit-design-study .app-button[aria-pressed="true"] { color:var(--o-text); background:var(--o-accent-soft); }
+#orbit-design-study .app-button[aria-pressed="true"]:after { content:""; width:3px; height:3px; background:var(--o-accent); position:absolute; border-radius:50%; right:8px; top:7px; }
+#orbit-design-study .app-name { font-size:11px; line-height:14px; white-space:nowrap; }
+#orbit-design-study .app-icon { height:32px; width:32px; display:flex; align-items:center; justify-content:center; border-radius:9px; position:relative; color:#fff; flex-shrink:0; box-shadow:0 1px 2px #0000000b,inset 0 0 0 .6px #ffffff30; overflow:hidden; }
+#orbit-design-study .app-icon svg { --o-icon-size:20px; stroke-width:1.9; }
+#orbit-design-study .app-icon.gpt { background:linear-gradient(145deg,#fff,#eceeec); color:#222d29; }
+#orbit-design-study .gpt-rosette { position:relative; width:22px; height:22px; }
+#orbit-design-study .gpt-rosette b { position:absolute; border:1.2px solid currentColor; width:10px; height:14px; left:6px; top:0; border-radius:5px; transform-origin:5px 11px; }
+#orbit-design-study .app-icon.claude { background:#d68062; color:#fcf1e6; font-size:31px; font-family:serif; line-height:1; }
+#orbit-design-study .app-icon.cursor { background:linear-gradient(145deg,#383b42,#121315); }
+#orbit-design-study .cursor-crystal { width:17px; height:19px; background:conic-gradient(from 30deg,#fff 0 90deg,#a8acb0 90deg 180deg,#d9dcdf 180deg 240deg,#fff 240deg); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); }
+#orbit-design-study .app-icon.finder { background:linear-gradient(90deg,#3aaff4 0 50%,#d5eeff 50%); color:#143c76; }
+#orbit-design-study .finder-face { font-size:23px; transform:translateY(-2px); }
+#orbit-design-study .app-icon.chrome { background:#fff; }
+#orbit-design-study .chrome-logo { width:23px; height:23px; background:conic-gradient(#e65b50 0 33.3%,#f6c649 33.3% 66.6%,#52a367 66.6%); border-radius:50%; display:grid; place-items:center; }
+#orbit-design-study .chrome-logo:after { content:""; width:10px; height:10px; background:#368ada; border:2px solid #f2f7ff; border-radius:50%; }
+#orbit-design-study .app-icon.music { background:linear-gradient(145deg,#30d39d,#00a875); color:#fff4b4; }
+#orbit-design-study .app-icon.wechat { background:linear-gradient(145deg,#3ddb65,#08b137); }
+#orbit-design-study .app-icon.meeting { background:linear-gradient(145deg,#4aa2ff,#075ce4); }
+#orbit-design-study .app-icon.feishu { background:linear-gradient(150deg,#56d4e9,#3279ec); }
+#orbit-design-study .commands-panel { grid-area:keys; padding:14px 15px; min-width:0; display:flex; flex-direction:column; }
+#orbit-design-study .commands-panel .panel-heading { margin-bottom:9px; }
+#orbit-design-study .mode-label { display:flex; align-items:center; gap:6px; }
+#orbit-design-study .mode-label svg { width:13px; height:13px; color:var(--o-sub); }
+#orbit-design-study .keygrid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; }
+#orbit-design-study .key { min-height:42px; border:1px solid color-mix(in srgb,var(--o-line) 65%,transparent); border-radius:10px; background:var(--o-key); color:var(--o-text); box-shadow:0 1px 1px #0a153108,inset 0 1px 0 #ffffff12; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:4px 2px; transition:transform .12s,background .15s; font-size:11px; }
+#orbit-design-study .key small { font-size:10px; color:var(--o-sub); line-height:1; }
+#orbit-design-study .key:hover { background:var(--o-key-hover); }
+#orbit-design-study .key:active,#orbit-design-study .key.key-flash { transform:translateY(1px) scale(.97); background:var(--o-accent-soft); color:var(--o-accent); }
+#orbit-design-study .key.wide { grid-column:span 2; }
+#orbit-design-study .key.stop { color:#c65c59; }
+#orbit-design-study .key.yes { color:var(--o-accent); }
+#orbit-design-study .key .arrow-text { font-size:17px; line-height:1; }
+#orbit-design-study .voicebar { margin-top:11px; display:flex; gap:8px; }
+#orbit-design-study .talk { background:var(--o-accent); border:1px solid #ffffff12; color:var(--o-accent-text); border-radius:12px; flex:1; display:flex; align-items:center; justify-content:center; gap:8px; height:47px; min-width:0; font-size:12px; box-shadow:0 3px 9px color-mix(in srgb,var(--o-accent) 14%,transparent); touch-action:none; user-select:none; }
+#orbit-design-study .talk.recording { background:#ba535c; }
+#orbit-design-study .send { background:var(--o-key); color:var(--o-text); border:1px solid var(--o-line); border-radius:12px; width:69px; display:flex; align-items:center; justify-content:center; gap:5px; font-size:11px; padding:0 5px; white-space:nowrap; flex-shrink:0; }
+#orbit-design-study .send svg { --o-icon-size:13px; }
+#orbit-design-study .draft-note { display:none; color:var(--o-sub); font-size:10px; text-align:center; margin-top:9px; line-height:1.4; min-height:13px; }
+#orbit-design-study .keymore { display:none; }
+#orbit-design-study .left-extras { display:none; }
+#orbit-design-study .trackpad { grid-area:pad; background:var(--o-pad); border:1px solid var(--o-line); border-radius:var(--o-radius); position:relative; overflow:hidden; display:flex; flex-direction:column; min-width:0; box-shadow:inset 0 2px 5px #121d3503; }
+#orbit-design-study .pad-top { padding:17px 21px; display:flex; align-items:center; justify-content:space-between; pointer-events:none; position:absolute; width:100%; top:0; z-index:2; }
+#orbit-design-study .pad-label { font-size:10px; color:var(--o-sub); letter-spacing:1.6px; }
+#orbit-design-study .pad-top-right { display:flex; align-items:center; gap:5px; color:var(--o-sub); font-size:10px; }
+#orbit-design-study .pad-top-right svg { width:12px; height:12px; }
+#orbit-design-study .touch-surface { flex:1; position:relative; width:100%; border:0; padding:48px 20px 46px; background:transparent; color:var(--o-text); cursor:default; touch-action:none; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:220px; user-select:none; overflow:hidden; }
+#orbit-design-study .pad-center { display:flex; flex-direction:column; align-items:center; gap:12px; transition:opacity .2s; pointer-events:none; }
+#orbit-design-study .pad-emblem { width:58px; height:58px; border:1px solid var(--o-line); border-radius:18px; display:grid; place-items:center; background:color-mix(in srgb,var(--o-panel) 50%,transparent); box-shadow:0 3px 8px #06142b03; color:var(--o-icon); margin-bottom:2px; }
+#orbit-design-study .pad-emblem svg { --o-icon-size:25px; stroke-width:1.2; }
+#orbit-design-study .pad-title { font-size:18px; font-weight:400; letter-spacing:-.4px; color:var(--o-icon); }
+#orbit-design-study .pad-subtitle { font-size:11px; letter-spacing:.3px; color:var(--o-sub); }
+#orbit-design-study .touch-surface.is-touching .pad-center { opacity:.3; }
+#orbit-design-study .pad-cursor { position:absolute; top:50%; left:53%; width:27px; height:30px; color:var(--o-text); opacity:0; pointer-events:none; transform:translate(-3px,-3px); z-index:3; }
+#orbit-design-study .pad-cursor svg { --o-icon-size:26px; fill:var(--o-panel); stroke-width:1.5; filter:drop-shadow(0 2px 2px #00000018); }
+#orbit-design-study .pad-ripple { width:32px; height:32px; position:absolute; border:1px solid var(--o-accent); border-radius:50%; pointer-events:none; margin:-16px; animation:orbit-ripple .65s ease-out forwards; background:color-mix(in srgb,var(--o-accent) 10%,transparent); }
+#orbit-design-study .pad-footer { min-height:41px; margin:0 20px; display:flex; align-items:center; justify-content:space-between; gap:8px; border-top:1px solid color-mix(in srgb,var(--o-line) 60%,transparent); color:var(--o-sub); }
+#orbit-design-study .pad-footer .pad-event { font-size:11px; display:flex; align-items:center; gap:6px; }
+#orbit-design-study .pad-tools { display:flex; align-items:center; gap:5px; }
+#orbit-design-study .pad-tools .icon-button { width:28px; height:28px; }
+#orbit-design-study .pad-tools .icon-button svg { --o-icon-size:15px; }
+#orbit-design-study .touchbar { grid-area:bar; min-width:0; background:var(--o-panel); border:1px solid var(--o-line); border-radius:15px; display:flex; align-items:center; padding:7px 9px; gap:7px; box-shadow:var(--o-shadow); }
+#orbit-design-study .tb-caption { color:var(--o-sub); font-size:9px; white-space:nowrap; letter-spacing:.3px; padding:0 7px; display:flex; gap:7px; align-items:center; }
+#orbit-design-study .tb-caption svg { width:13px; height:13px; }
+#orbit-design-study .tb-context { display:flex; align-items:center; gap:6px; flex:1; min-width:0; }
+#orbit-design-study .tb-btn { height:34px; min-width:36px; background:var(--o-key); border:0; border-radius:8px; padding:0 13px; font-size:10px; color:var(--o-text); display:flex; align-items:center; justify-content:center; gap:7px; white-space:nowrap; }
+#orbit-design-study .tb-btn:hover { background:var(--o-key-hover); }
+#orbit-design-study .tb-btn svg { --o-icon-size:14px; }
+#orbit-design-study .tb-btn.is-context { background:var(--o-accent-soft); color:var(--o-accent); flex:1; }
+#orbit-design-study .tb-system { display:flex; align-items:center; gap:6px; border-left:1px solid var(--o-line); padding-left:9px; }
+#orbit-design-study .tb-system .tb-btn { padding:0 10px; }
+#orbit-design-study .control-group { display:flex; align-items:center; gap:6px; color:var(--o-icon); }
+#orbit-design-study .control-group svg { width:14px; height:14px; }
+#orbit-design-study .mini-range { appearance:none; width:61px; height:4px; border:0; border-radius:3px; background:var(--o-key-hover); padding:0; }
+#orbit-design-study .mini-range::-webkit-slider-thumb { appearance:none; height:11px; width:11px; background:var(--o-icon); border:2px solid var(--o-panel); border-radius:50%; box-shadow:0 1px 3px #00000025; }
+#orbit-design-study .toast { position:absolute; bottom:25px; left:50%; transform:translate(-50%,8px); max-width:calc(100% - 44px); background:var(--o-text); color:var(--o-panel); border:1px solid #ffffff15; border-radius:14px; box-shadow:0 5px 25px #00000014; display:flex; align-items:center; gap:8px; padding:11px 17px; font-size:11px; opacity:0; pointer-events:none; z-index:6; transition:opacity .16s,transform .16s; white-space:nowrap; }
+#orbit-design-study .toast.show { opacity:1; transform:translate(-50%,0); }
+#orbit-design-study .toast svg { width:14px; height:14px; }
+#orbit-design-study .modal-layer { position:absolute; inset:0; z-index:9; background:#11182732; backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; padding:24px; }
+#orbit-design-study .modal-layer[hidden] { display:none; }
+#orbit-design-study .o-dialog { background:var(--o-panel); color:var(--o-text); width:390px; max-width:100%; border:1px solid var(--o-line); border-radius:24px; padding:23px; box-shadow:0 25px 80px #00000025; }
+#orbit-design-study .dialog-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:20px; }
+#orbit-design-study .dialog-heading h3 { margin:0; font-weight:500; font-size:19px; letter-spacing:-.5px; }
+#orbit-design-study .dialog-subtitle { font-size:11px; color:var(--o-sub); margin:-12px 0 20px; line-height:1.6; }
+#orbit-design-study .setting-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 0; border-top:1px solid var(--o-line); font-size:12px; }
+#orbit-design-study .setting-row small { display:block; font-size:10px; color:var(--o-sub); margin-top:4px; }
+#orbit-design-study .setting-row input[type="range"] { width:120px; accent-color:var(--o-accent); }
+#orbit-design-study .switch { appearance:none; width:38px; height:23px; background:var(--o-key-hover); border-radius:20px; cursor:pointer; transition:background .2s; position:relative; flex-shrink:0; margin:0; }
+#orbit-design-study .switch:checked { background:var(--o-accent); }
+#orbit-design-study .switch:after { content:""; position:absolute; width:19px; height:19px; top:2px; left:2px; border-radius:50%; background:#fff; box-shadow:0 1px 4px #00000022; transition:transform .2s; }
+#orbit-design-study .switch:checked:after { transform:translateX(15px); }
+#orbit-design-study .dialog-primary { border:0; background:var(--o-accent); color:var(--o-accent-text); width:100%; padding:12px; border-radius:12px; font-size:12px; margin-top:16px; }
+#orbit-design-study .text-input { background:var(--o-key); color:var(--o-text); width:100%; border:1px solid var(--o-line); border-radius:12px; padding:12px; min-height:120px; resize:vertical; font-size:14px; line-height:1.7; }
+#orbit-design-study .gesture-row { display:flex; gap:14px; align-items:center; padding:13px 0; border-top:1px solid var(--o-line); }
+#orbit-design-study .gesture-icon { color:var(--o-accent); width:37px; height:37px; background:var(--o-accent-soft); border-radius:11px; display:grid; place-items:center; }
+#orbit-design-study .gesture-row strong { font-size:12px; font-weight:500; display:block; }
+#orbit-design-study .gesture-row small { font-size:10px; color:var(--o-sub); display:block; margin-top:4px; }
+#orbit-design-study .dialog-keygrid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+#orbit-design-study .dialog-keygrid .key { min-height:48px; }
+#orbit-design-study .device-card { padding:16px; border:1px solid var(--o-line); background:var(--o-key); border-radius:14px; display:flex; align-items:center; gap:14px; }
+#orbit-design-study .device-card>svg { width:32px; height:32px; color:var(--o-sub); }
+#orbit-design-study .device-card strong { display:block; font-size:13px; font-weight:500; }
+#orbit-design-study .device-card small { font-size:10px; color:var(--o-sub); display:block; margin-top:5px; }
+#orbit-design-study [data-design="graphite"] { --o-bg:#151619; --o-panel:#202125; --o-text:#eeeeef; --o-sub:#8b8e99; --o-line:#32343b; --o-key:#2d2f35; --o-key-hover:#3c3f48; --o-accent:#acc3ed; --o-accent-soft:#303c53; --o-accent-text:#1c2941; --o-pad:#1b1d21; --o-icon:#a3a8b5; --o-shadow:0 6px 16px #00000012; --o-radius:19px; color-scheme:dark; border-color:#3d3f45; }
+#orbit-design-study [data-design="graphite"] .workspace { grid-template-columns:minmax(0,1fr) 261px; grid-template-rows:52px 434px 75px; grid-template-areas:"bar bar" "pad keys" "apps apps"; }
+#orbit-design-study [data-design="graphite"] .trackpad { background:radial-gradient(ellipse at 50% 45%,#22262e,#1a1c20 70%); }
+#orbit-design-study [data-design="graphite"] .pad-emblem { border-radius:50%; width:70px; height:70px; background:#23262d; border-color:#343842; }
+#orbit-design-study [data-design="graphite"] .pad-title { font-size:20px; color:#c1c6d1; }
+#orbit-design-study [data-design="graphite"] .pad-top { padding-top:21px; }
+#orbit-design-study [data-design="graphite"] .apps-panel { display:flex; align-items:center; padding:8px 17px; gap:20px; }
+#orbit-design-study [data-design="graphite"] .apps-panel .panel-heading { margin:0; display:block; min-width:53px; }
+#orbit-design-study [data-design="graphite"] .apps-panel .panel-heading .icon-button { display:none; }
+#orbit-design-study [data-design="graphite"] .app-grid { grid-template-columns:repeat(9,minmax(0,1fr)); flex:1; }
+#orbit-design-study [data-design="graphite"] .app-button { min-height:55px; }
+#orbit-design-study [data-design="graphite"] .commands-panel { padding:20px 17px; }
+#orbit-design-study [data-design="graphite"] .commands-panel .panel-heading { margin-bottom:20px; }
+#orbit-design-study [data-design="graphite"] .keygrid { gap:8px; }
+#orbit-design-study [data-design="graphite"] .key { min-height:68px; border-radius:11px; }
+#orbit-design-study [data-design="graphite"] .voicebar { margin-top:auto; }
+#orbit-design-study [data-design="graphite"] .talk { height:60px; }
+#orbit-design-study [data-design="graphite"] .draft-note { margin-top:14px; }
+#orbit-design-study [data-design="graphite"] .touchbar { background:#0e0f11; border-color:#27292e; box-shadow:inset 0 1px 3px #00000022; }
+#orbit-design-study [data-design="graphite"] .tb-btn { background:#25262b; }
+#orbit-design-study [data-design="graphite"] .tb-btn.is-context { background:#2e3b52; }
+#orbit-design-study [data-design="titanium"] { --o-bg:#eae7e1; --o-panel:#f7f5f1; --o-text:#49453f; --o-sub:#928b81; --o-line:#dedad2; --o-key:#ede9e2; --o-key-hover:#e1dbd1; --o-accent:#776753; --o-accent-soft:#e9e1d5; --o-pad:#f1eee8; --o-icon:#958b7d; --o-radius:21px; --o-shadow:0 4px 12px #514b3b05; border-color:#d4cfc6; background:linear-gradient(115deg,#ebe8e2,#e6e2da); }
+#orbit-design-study [data-design="titanium"] .workspace { grid-template-columns:220px minmax(0,1fr) 220px; grid-template-rows:54px 476px; grid-template-areas:"bar bar bar" "apps pad keys"; gap:14px; padding:0 17px 20px; }
+#orbit-design-study [data-design="titanium"] .systembar { height:71px; }
+#orbit-design-study [data-design="titanium"] .trackpad { background:linear-gradient(145deg,#f3f1ed,#eeebe5); border-color:#d5cfc4; box-shadow:inset 0 1px 4px #5d54420a,0 1px 0 #ffffffb0; }
+#orbit-design-study [data-design="titanium"] .pad-emblem { border-radius:50%; background:transparent; border:1px solid #ddd7cc; box-shadow:none; }
+#orbit-design-study [data-design="titanium"] .pad-title { font-size:17px; }
+#orbit-design-study [data-design="titanium"] .pad-top { padding:18px 17px; }
+#orbit-design-study [data-design="titanium"] .pad-top-right span { display:none; }
+#orbit-design-study [data-design="titanium"] .apps-panel { display:flex; flex-direction:column; padding:17px 13px; }
+#orbit-design-study [data-design="titanium"] .app-grid { row-gap:11px; gap:11px 5px; }
+#orbit-design-study [data-design="titanium"] .app-button { min-height:54px; }
+#orbit-design-study [data-design="titanium"] .left-extras { display:block; margin-top:auto; }
+#orbit-design-study [data-design="titanium"] .left-extras h4 { font-size:10px; color:var(--o-sub); font-weight:400; margin:12px 0 10px; }
+#orbit-design-study [data-design="titanium"] .edit-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; }
+#orbit-design-study [data-design="titanium"] .edit-grid .key { min-height:48px; flex-direction:row; gap:8px; }
+#orbit-design-study [data-design="titanium"] .thumb-label { color:var(--o-sub); font-size:10px; margin-top:10px; display:flex; align-items:center; justify-content:center; gap:5px; letter-spacing:1px; }
+#orbit-design-study [data-design="titanium"] .thumb-label svg { width:12px; height:12px; }
+#orbit-design-study [data-design="titanium"] .commands-panel { padding:17px 13px; }
+#orbit-design-study [data-design="titanium"] .keygrid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+#orbit-design-study [data-design="titanium"] .keygrid .key { min-height:65px; }
+#orbit-design-study [data-design="titanium"] .keygrid .key.wide { grid-column:span 1; }
+#orbit-design-study [data-design="titanium"] .keygrid .edit-key { display:none; }
+#orbit-design-study [data-design="titanium"] .commands-panel .panel-heading { margin-bottom:18px; }
+#orbit-design-study [data-design="titanium"] .voicebar { margin-top:auto; flex-direction:column; gap:8px; }
+#orbit-design-study [data-design="titanium"] .talk { min-height:55px; flex:auto; background:linear-gradient(#85745e,#74634f); box-shadow:0 2px 3px #55463222,inset 0 1px 1px #ffffff38; }
+#orbit-design-study [data-design="titanium"] .send { width:100%; height:47px; }
+#orbit-design-study [data-design="titanium"] .draft-note { margin-top:12px; }
+#orbit-design-study [data-design="titanium"] .key { background:linear-gradient(#f4f1eb,#e9e5dd); border-color:#dcd5c9; box-shadow:0 2px 2px #5c4b3010,inset 0 1px 0 #ffffffd0; }
+#orbit-design-study [data-design="titanium"] .tb-context .tb-btn.is-context { background:#e7dfd3; }
+#orbit-design-study .orbit-device .talk.recording { background:#b95d68; color:#fff; }
+#orbit-design-study .touch-surface:focus:not(:focus-visible) { outline:none; }
+#orbit-design-study [data-design="titanium"] .keygrid [data-key="no"], #orbit-design-study [data-design="titanium"] .keygrid [data-key="switch"] { grid-column:1; grid-row:2; }
+#orbit-design-study [data-design="titanium"] .keygrid [data-key="up"] { grid-column:2; grid-row:2; }
+#orbit-design-study .orbit-device.is-expanded .workspace { grid-template-columns:1fr; grid-template-rows:53px 495px; grid-template-areas:"bar" "pad"; }
+#orbit-design-study .orbit-device.is-expanded .apps-panel,#orbit-design-study .orbit-device.is-expanded .commands-panel { display:none; }
+#orbit-design-study .orbit-device.is-expanded .trackpad { margin:0; }
+#orbit-design-study .orbit-device.is-expanded .touchbar { margin:0; }
+@keyframes orbit-ripple { to { transform:scale(2.5); opacity:0; } }
+@media (prefers-reduced-motion:reduce) { #orbit-design-study *,#orbit-design-study *:before,#orbit-design-study *:after { animation:none!important; transition:none!important; } }
+@media (max-width:850px) {
+ #orbit-design-study .design-choice { padding:10px 8px; gap:6px; }
+ #orbit-design-study .design-swatch { width:19px; height:26px; }
+ #orbit-design-study .design-choice strong { font-size:12px; }
+ #orbit-design-study .design-property { max-width:230px; text-align:right; line-height:1.5; }
+ #orbit-design-study .systembar { padding:0 18px!important; gap:8px; }
+ #orbit-design-study .system-left,#orbit-design-study .system-right { gap:9px; }
+ #orbit-design-study .mode-control { margin-left:5px; }
+ #orbit-design-study .mode-control button { padding:0 9px; }
+ #orbit-design-study .connection-detail { display:none; }
+ #orbit-design-study .workspace { grid-template-columns:249px minmax(0,1fr); padding:0 14px 14px; gap:11px; }
+ #orbit-design-study .tb-caption { display:none; }
+ #orbit-design-study .tb-btn { padding:0 10px; gap:5px; }
+ #orbit-design-study .tb-system { gap:4px; padding-left:7px; }
+ #orbit-design-study .mini-range { width:42px; }
+ #orbit-design-study [data-design="graphite"] .workspace { grid-template-columns:minmax(0,1fr) 249px; }
+ #orbit-design-study [data-design="graphite"] .apps-panel { gap:8px; padding:8px; }
+ #orbit-design-study [data-design="graphite"] .apps-panel .panel-heading { display:none; }#orbit-design-study [data-design="titanium"] .pad-subtitle { max-width:170px; line-height:1.9; }#orbit-design-study [data-design="titanium"] .pad-footer { margin:0 12px; }#orbit-design-study [data-design="titanium"] .pad-event { font-size:9px; }#orbit-design-study [data-design="titanium"] .pad-tools { gap:0; }
+ #orbit-design-study [data-design="titanium"] .workspace { grid-template-columns:188px minmax(0,1fr) 188px; gap:11px; padding:0 13px 16px; }
+ #orbit-design-study [data-design="titanium"] .apps-panel,#orbit-design-study [data-design="titanium"] .commands-panel { padding:17px 11px; }
+}
+@media (max-width:620px) {
+ #orbit-design-study .design-switcher { gap:4px; }
+ #orbit-design-study .design-choice { padding:8px 2px; flex-direction:column; gap:5px; text-align:center; border-radius:10px; min-height:62px; }
+ #orbit-design-study .design-choice small { display:none; }
+ #orbit-design-study .design-choice strong { font-size:10px; }
+ #orbit-design-study .design-swatch { width:25px; height:17px; border-radius:5px; }
+ #orbit-design-study .design-heading { padding:17px 0 13px; align-items:flex-start; }
+ #orbit-design-study .design-heading>div { gap:7px; }
+ #orbit-design-study .design-heading h2 { font-size:15px; }
+ #orbit-design-study .design-property { font-size:10px; max-width:112px; }
+ #orbit-design-study .orbit-device { border-radius:22px; }
+ #orbit-design-study .systembar { height:auto!important; min-height:93px; padding:15px 14px!important; flex-wrap:wrap; gap:12px; }
+ #orbit-design-study .system-left { width:100%; justify-content:space-between; }
+ #orbit-design-study .orbit-brand { font-size:15px; }
+ #orbit-design-study .system-right { width:100%; gap:12px; }
+ #orbit-design-study .connection { margin-right:auto; }
+ #orbit-design-study .system-right>.time { font-size:11px; }
+ #orbit-design-study .system-status>span:first-child { display:none; }
+ #orbit-design-study .system-status svg { display:none; }
+ #orbit-design-study .system-right>.icon-button { width:26px; height:26px; }
+ #orbit-design-study .workspace,#orbit-design-study [data-design="graphite"] .workspace,#orbit-design-study [data-design="titanium"] .workspace { grid-template-columns:minmax(0,1fr); grid-template-rows:auto 285px auto auto; grid-template-areas:"bar" "pad" "apps" "keys"; gap:10px; padding:0 10px 12px; }
+ #orbit-design-study .touchbar{ flex-wrap:wrap; gap:6px; padding:8px; margin:0; border-radius:14px; }
+ #orbit-design-study .tb-context { width:100%; gap:4px; flex-wrap:wrap; }
+ #orbit-design-study .tb-btn { height:34px; padding:0 9px; font-size:10px; }
+ #orbit-design-study .tb-context .tb-btn.is-context { min-width:160px; max-width:100%; }
+ #orbit-design-study .tb-system { border-left:0; border-top:1px solid var(--o-line); padding:6px 0 0; justify-content:space-between; width:100%; }
+ #orbit-design-study .mini-range { width:58px; }
+ #orbit-design-study .trackpad{ margin:0; border-radius:18px; }
+ #orbit-design-study .pad-top{ padding:17px; }
+ #orbit-design-study .pad-subtitle { font-size:10px; }
+ #orbit-design-study .pad-footer { margin:0 15px; }#orbit-design-study [data-design="titanium"] .pad-subtitle { max-width:none; }
+ #orbit-design-study .apps-panel,#orbit-design-study [data-design="graphite"] .apps-panel,#orbit-design-study [data-design="titanium"] .apps-panel { margin:0; display:block; padding:14px; width:100%; }
+ #orbit-design-study .apps-panel>.panel-heading,#orbit-design-study [data-design="graphite"] .apps-panel>.panel-heading { display:flex; margin-bottom:9px; }
+ #orbit-design-study .app-grid,#orbit-design-study [data-design="graphite"] .app-grid{ grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+ #orbit-design-study .app-button{ min-height:55px; flex-direction:column; justify-content:center; gap:4px; }
+ #orbit-design-study .commands-panel,#orbit-design-study [data-design="graphite"] .commands-panel,#orbit-design-study [data-design="titanium"] .commands-panel { padding:15px 14px; margin:0; display:flex; flex-direction:column; width:100%; gap:0; }
+ #orbit-design-study .commands-panel>.panel-heading{ display:flex; width:100%; margin-bottom:12px; }
+ #orbit-design-study .key,#orbit-design-study [data-design="graphite"] .key{ min-height:49px; }
+ #orbit-design-study .voicebar,#orbit-design-study [data-design="graphite"] .voicebar { width:100%; margin:12px 0 0; }
+ #orbit-design-study .talk,#orbit-design-study [data-design="graphite"] .talk{ height:49px; }
+ #orbit-design-study [data-design="titanium"] .left-extras { margin-top:12px; }
+ #orbit-design-study .toast { font-size:11px; white-space:normal; bottom:20px; }
+ #orbit-design-study .modal-layer { padding:15px; align-items:flex-start; padding-top:90px; }
+ #orbit-design-study .o-dialog { padding:19px; }
+ #orbit-design-study .prototype-foot { font-size:10px; gap:4px; }
+ #orbit-design-study .orbit-device.is-expanded .workspace { grid-template-columns:1fr; grid-template-rows:auto 380px; grid-template-areas:"bar" "pad"; }
+}
+@media (pointer:coarse) {
+ #orbit-design-study .icon-button { min-width:38px; min-height:38px; }
+ #orbit-design-study .mode-control button { min-height:38px; }
+ #orbit-design-study .text-input { font-size:16px; }
+ #orbit-design-study .tb-btn { min-height:40px; }
+ #orbit-design-study .mini-range { height:8px; }
+ #orbit-design-study .mini-range::-webkit-slider-thumb { width:18px; height:18px; }
+}
+
+/* Selected directions: 02 Graphite Pro and 05 Titanium Duo. */
+#orbit-design-study { font-size:14px; line-height:1.5; }
+#orbit-design-study .design-switcher { grid-template-columns:repeat(2,minmax(0,1fr)); }
+#orbit-design-study .design-choice { min-height:62px; padding:12px 16px; }
+#orbit-design-study .design-choice small { font-size:11px; }
+#orbit-design-study .design-choice strong { font-size:14px; }
+#orbit-design-study .system-right>.icon-button { width:44px; height:44px; }
+#orbit-design-study .tb-btn { height:44px; min-width:44px; }
+#orbit-design-study [data-design="graphite"] .workspace { grid-template-columns:minmax(0,1fr) 316px; grid-template-rows:60px 434px 84px; }
+#orbit-design-study [data-design="titanium"] .workspace { grid-template-rows:60px 476px; }
+#orbit-design-study .tb-btn.is-context { max-width:420px; }
+#orbit-design-study .key { font-size:12px; }
+#orbit-design-study .talk { font-size:13px; }
+#orbit-design-study .send { font-size:12px; }
+#orbit-design-study .pad-tools .icon-button { width:36px; height:36px; }
+#orbit-design-study .mini-range { min-height:6px; }
+#orbit-design-study .toast { bottom:24px; }
+#orbit-design-study .voice-preview { background:var(--o-key); border:1px solid var(--o-line); padding:14px; border-radius:12px; color:var(--o-text); font-size:13px; line-height:1.7; margin-bottom:14px; }
+#orbit-design-study .voice-preview-label { font-size:11px; color:var(--o-sub); margin-bottom:8px; }
+#orbit-design-study[data-view="screen"] { padding:0; margin:0; }
+#orbit-design-study[data-view="screen"]>.design-switcher,
+#orbit-design-study[data-view="screen"]>.design-heading,
+#orbit-design-study[data-view="screen"]>.prototype-foot { display:none; }
+#orbit-design-study[data-view="screen"] .orbit-device { border:0; border-radius:0; box-shadow:none; min-height:640px; aspect-ratio:16 / 10; display:flex; flex-direction:column; }
+#orbit-design-study[data-view="screen"] .systembar { flex-shrink:0; }
+#orbit-design-study[data-view="screen"] .workspace { flex:1; min-height:0; }
+#orbit-design-study[data-view="screen"] [data-design="graphite"] .workspace { grid-template-rows:60px minmax(0,1fr) 84px; }
+#orbit-design-study[data-view="screen"] [data-design="titanium"] .workspace { grid-template-rows:60px minmax(0,1fr); }
+#orbit-design-study[data-view="screen"] .orbit-device.is-expanded .workspace { grid-template-columns:1fr; grid-template-rows:60px minmax(0,1fr); grid-template-areas:"bar" "pad"; }
+@media (max-width:850px) {
+ #orbit-design-study .design-property { max-width:300px; }
+ #orbit-design-study .tb-caption { display:none; }
+ #orbit-design-study .pad-footer .pad-event { font-size:10px; }
+}
+@media (max-width:620px) {
+ #orbit-design-study .design-choice { flex-direction:row; justify-content:center; padding:10px; }
+ #orbit-design-study .design-choice strong { font-size:13px; }
+ #orbit-design-study .design-choice small { display:block; }
+ #orbit-design-study .design-swatch { height:29px; width:25px; }
+ #orbit-design-study .design-property { max-width:116px; }
+ #orbit-design-study [data-design="graphite"] .workspace,
+ #orbit-design-study [data-design="titanium"] .workspace { grid-template-columns:minmax(0,1fr); grid-template-rows:auto 285px auto auto; grid-template-areas:"bar" "pad" "apps" "keys"; }
+ #orbit-design-study[data-view="screen"] .orbit-device { min-height:0; aspect-ratio:auto; }
+ #orbit-design-study[data-view="screen"] [data-design="graphite"] .workspace,
+ #orbit-design-study[data-view="screen"] [data-design="titanium"] .workspace { grid-template-rows:auto 285px auto auto; }
+ #orbit-design-study[data-view="screen"] .orbit-device.is-expanded .workspace { grid-template-rows:auto 420px; grid-template-areas:"bar" "pad"; }
+}
+</style>
+<script>
+(() => {
+ const root = document.getElementById('orbit-design-study');
+ const device = root.querySelector('.orbit-device');
+ const concepts = [
+  {id:'graphite',number:'02',name:'深空专业',title:'深空 · 专注于创造',en:'GRAPHITE PRO',property:'右侧快捷键 / 深空铝 / 夜间工作',swatch:'linear-gradient(140deg,#565a63,#151619)',pad:'Stay in flow.',label:'PRECISION TRACKPAD'},
+  {id:'titanium',number:'05',name:'双手操控',title:'钛金 · 双手的默契',en:'TITANIUM DUO',property:'双侧拇指区 / 温润钛色 / 实体键感',swatch:'linear-gradient(140deg,#e6e0d5,#ac9e8b)',pad:'一触，心手相连',label:'MULTI-TOUCH'}
+ ];
+ const apps = [
+  {id:'gpt',name:'ChatGPT',icon:'gpt'}, {id:'claude',name:'Claude',icon:'claude'}, {id:'cursor',name:'Cursor',icon:'cursor'},
+  {id:'finder',name:'Finder',icon:'finder'}, {id:'chrome',name:'Chrome',icon:'chrome'}, {id:'music',name:'QQ 音乐',icon:'music'},
+  {id:'wechat',name:'微信',icon:'wechat'}, {id:'meeting',name:'腾讯会议',icon:'meeting'}, {id:'feishu',name:'飞书',icon:'feishu'}
+ ];
+ const state = {design:root.dataset.initialDesign || 'graphite',app:'cursor',mode:'coding',volume:65,brightness:75,sensitivity:55,natural:true,haptics:true,expanded:false,draft:'',recording:false,playing:false,muted:false};
+ let toastTimer, priorFocus, recordPointer, startPoint, heldTimer, spaceHeld=false;
+ const icon = (name) => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+ const esc = (value) => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const paintIcons = () => { if (globalThis.lucide) globalThis.lucide.createIcons({attrs:{width:17,height:17}}); };
+ function appIcon(app) {
+  const logos = {gpt:`<span class="gpt-rosette">${[0,60,120,180,240,300].map(d=>`<b style="transform:rotate(${d}deg)"></b>`).join('')}</span>`,claude:'✳',cursor:'<span class="cursor-crystal"></span>',finder:'<span class="finder-face">⌣</span>',chrome:'<span class="chrome-logo"></span>',music:icon('music-2'),wechat:icon('messages-square'),meeting:icon('video'),feishu:icon('send')};
+  return `<span class="app-icon ${app.icon}">${logos[app.icon]}</span>`;
+ }
+ function appButtons() { return apps.map(a=>`<button type="button" class="app-button" data-app="${a.id}" aria-pressed="${state.app===a.id}" aria-label="切换到 ${a.name}">${appIcon(a)}<span class="app-name">${a.name}</span></button>`).join(''); }
+ const keyData = [
+  ['esc','Esc','','','退出'],['stop','停止','⌃C','stop','中断任务'],['yes','确认','Y','yes','确认 Y'],['up','↑','','not-focus','方向键 ↑'],['no','拒绝','N','','拒绝 N'],
+  ['space','Space','','wide not-focus','空格'],['left','←','','not-focus','方向键 ←'],['down','↓','','not-focus','方向键 ↓'],['right','→','','not-focus','方向键 →'],
+  ['cut','剪切','⌘X','edit-key not-focus','剪切 ⌘X'],['copy','复制','⌘C','edit-key','复制 ⌘C'],['paste','粘贴','⌘V','edit-key','粘贴 ⌘V'],['delete','删除','⌫','wide edit-key not-focus','删除']
+ ];
+ const dailyKeys = [
+  ['esc','Esc','','','退出'],['close','关闭','⌘W','stop','关闭窗口'],['search','搜索','⌘F','yes','搜索'],['up','↑','','not-focus','方向键 ↑'],['switch','切换','⌘⇥','','切换窗口'],
+  ['space','Space','','wide not-focus','空格'],['left','←','','not-focus','方向键 ←'],['down','↓','','not-focus','方向键 ↓'],['right','→','','not-focus','方向键 →'],
+  ['cut','剪切','⌘X','edit-key not-focus','剪切 ⌘X'],['copy','复制','⌘C','edit-key','复制 ⌘C'],['paste','粘贴','⌘V','edit-key','粘贴 ⌘V'],['delete','删除','⌫','wide edit-key not-focus','删除']
+ ];
+ function keyButton(k) { return `<button type="button" class="key ${k[3]}" data-key="${k[0]}" data-command="${k[4]}" aria-label="${k[4]}"><span class="${['up','down','left','right'].includes(k[0])?'arrow-text':''}">${k[1]}</span>${k[2]?`<small>${k[2]}</small>`:''}</button>`; }
+ function header() { return `<header class="systembar"><div class="system-left"><div class="orbit-brand"><span class="orbit-mark" aria-hidden="true"></span>Orbit</div><div class="mode-control" aria-label="快捷键模式"><button type="button" data-mode="coding" aria-pressed="${state.mode==='coding'}">Vibe Coding</button><button type="button" data-mode="daily" aria-pressed="${state.mode==='daily'}">日常</button></div></div><div class="system-right"><button type="button" class="connection" data-action="connection" aria-label="查看电脑连接状态"><span class="online-dot"></span>小西的 MacBook Pro <span class="connection-detail">· 6 ms</span></button><time class="time">09:41</time><span class="system-status"><span>86%</span><span class="battery-shape" aria-label="电量 86%"></span></span><button type="button" class="icon-button" data-action="settings" aria-label="设置">${icon('settings-2')}</button></div></header>`; }
+ function appsPanel() { return `<section class="apps-panel o-panel" aria-label="常用 App"><div class="panel-heading"><h3>常用 App</h3><button type="button" class="icon-button" data-action="allapps" aria-label="查看所有应用">${icon('ellipsis')}</button></div><div class="app-grid">${appButtons()}</div><div class="left-extras"><h4>编辑与修饰键</h4><div class="edit-grid">${keyData.filter(k=>['cut','copy','paste','delete'].includes(k[0])).map(k=>keyButton([k[0],k[1],k[2],'',k[4]])).join('')}<button type="button" class="key" data-modifier="command" aria-pressed="false">⌘ <small>Command</small></button><button type="button" class="key" data-modifier="shift" aria-pressed="false">⇧ <small>Shift</small></button></div><div class="thumb-label">${icon('hand')}左手 · 应用与编辑</div></div></section>`; }
+ function commandsPanel() { return `<section class="commands-panel o-panel" aria-label="快捷键"><div class="panel-heading"><h3 class="mode-label">${icon('command')}<span>${state.mode==='coding'?'Vibe Coding':'常用快捷键'}</span></h3><button type="button" class="icon-button" data-action="keys" aria-label="全部快捷键">${icon('sliders-horizontal')}</button></div><div class="keygrid">${(state.mode==='coding'?keyData:dailyKeys).map(keyButton).join('')}</div><button type="button" class="keymore icon-button" data-action="keys" aria-label="更多快捷键">${icon('ellipsis')}</button><div class="voicebar"><button type="button" class="talk" data-action="talk" aria-label="按住说话，演示语音状态">${icon('mic')}<span>按住说话</span></button><button type="button" class="send" data-action="send" aria-label="发送，长按换行"><span>发送</span>${icon('corner-down-left')}</button></div><div class="draft-note">${state.draft?'已有输入 · 点击发送':'松开发送到输入框 · 长按 ↵ 换行'}</div></section>`; }
+ function pad() {
+  const c=concepts.find(c=>c.id===state.design);
+  return `<section class="trackpad" aria-label="触控区域"><div class="pad-top"><span class="pad-label">${c.label}</span><span class="pad-top-right">${icon('radio')}<span>已连接</span></span></div><button type="button" class="touch-surface" aria-label="触控板演示：拖动移动指针，轻点单击，滚轮模拟双指滚动"><span class="pad-center"><span class="pad-emblem">${icon('mouse-pointer-2')}</span><span class="pad-title">${c.pad}</span><span class="pad-subtitle">单指移动 · 双指滚动 · 三指切换</span></span><span class="pad-cursor">${icon('mouse-pointer-2')}</span></button><div class="pad-footer"><span class="pad-event"><span class="online-dot"></span><span class="event-text">${state.app==='cursor'?'Cursor':apps.find(a=>a.id===state.app).name} · 就绪</span></span><div class="pad-tools"><button type="button" class="icon-button" data-action="keyboard" aria-label="文字输入">${icon('keyboard')}</button><button type="button" class="icon-button" data-action="gestures" aria-label="手势指南">${icon('hand')}</button><button type="button" class="icon-button" data-action="expand" aria-label="${state.expanded?'退出沉浸触控':'展开触控区'}">${icon(state.expanded?'minimize-2':'maximize-2')}</button></div></div></section>`;
+ }
+ function tbButton(label,ico,action,main=false) { return `<button type="button" class="tb-btn ${main?'is-context':''}" data-action="${action}"${label?'':` aria-label="${action==='previous'?'上一首':action==='play'?(state.playing?'暂停':'播放'):action==='next'?'下一首':action==='mute'?'切换静音':action==='back'?'后退':action==='forward'?'前进':'刷新'}"`}>${ico?icon(ico):''}${label?`<span>${label}</span>`:''}</button>`; }
+ function touchbar() {
+  let items;
+  if (state.app==='chrome') items=tbButton('','arrow-left','back')+tbButton('','arrow-right','forward')+tbButton('','rotate-cw','refresh')+tbButton('搜索或输入网址','search','address',true)+tbButton('收藏','star','bookmark');
+  else if (state.app==='music') items=tbButton('','skip-back','previous')+tbButton('',state.playing?'pause':'play','play')+tbButton('','skip-forward','next')+tbButton('专注歌单 · QQ 音乐','music-2','playlist',true);
+  else if (state.app==='finder') items=tbButton('新窗口','folder-plus','new-window')+tbButton('搜索文件','search','search-files',true)+tbButton('显示方式','layout-grid','view-files');
+  else if (state.app==='meeting') items=tbButton('麦克风','mic','meeting-mic')+tbButton('摄像头','video','meeting-video')+tbButton('共享屏幕','screen-share','share-screen',true);
+  else if (state.app==='cursor') items=tbButton('esc','','escape')+tbButton('新建对话','message-square-plus','new-chat',true)+tbButton('终端','terminal','terminal')+tbButton('运行','play','run');
+  else items=tbButton('esc','','escape')+tbButton('新建对话','message-square-plus','new-chat',true)+tbButton('搜索','search','search')+tbButton('切换窗口','panels-top-left','switch-window');
+  return `<section class="touchbar" aria-label="Mac Touch Bar"><span class="tb-caption">${icon('rectangle-horizontal')}TOUCH BAR</span><div class="tb-context">${items}</div><div class="tb-system"><label class="control-group" aria-label="屏幕亮度">${icon('sun')}<input type="range" min="0" max="100" value="${state.brightness}" data-range="brightness" class="mini-range" aria-label="屏幕亮度"></label><label class="control-group" aria-label="系统音量">${icon('volume-2')}<input type="range" min="0" max="100" value="${state.volume}" data-range="volume" class="mini-range" aria-label="系统音量"></label>${tbButton('',state.muted?'volume-x':'volume-1','mute')}</div></section>`;
+ }
+ function render() {
+  const c=concepts.find(c=>c.id===state.design);
+  root.querySelector('.design-switcher').innerHTML=concepts.map((c,i)=>`<button type="button" class="design-choice" data-design-select="${c.id}" aria-pressed="${c.id===state.design}" aria-label="方案 ${c.number}：${c.name}"><span class="design-swatch" style="background:${c.swatch}"></span><span><small>${c.number}</small><strong>${c.name}</strong></span></button>`).join('');
+  root.querySelector('.design-heading h2').textContent=c.title;
+  root.querySelector('.design-index').textContent=c.number;
+  root.querySelector('.design-property').textContent=c.property;
+  device.dataset.design=state.design;
+  device.classList.toggle('is-expanded',state.expanded);
+  device.innerHTML=header()+`<div class="workspace">${appsPanel()}${commandsPanel()}${pad()}${touchbar()}</div><div class="toast" role="status" aria-live="polite"></div><div class="modal-layer" hidden></div>`;
+  paintIcons(); bindPad(); bindVoice();
+ }
+ function toast(message) {
+  const t=device.querySelector('.toast'); if(!t) return;
+  clearTimeout(toastTimer); t.innerHTML=icon('check')+`<span>${esc(message)}</span>`; t.classList.add('show'); paintIcons();
+  toastTimer=setTimeout(()=>t.classList.remove('show'),1800);
+ }
+ function eventText(text) { const e=device.querySelector('.event-text'); if(e) e.textContent=text; }
+ function updateApp(id) {
+  state.app=id;
+  device.querySelectorAll('[data-app]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.app===id));
+  device.querySelector('.touchbar').outerHTML=touchbar();
+  eventText(`${apps.find(a=>a.id===id).name} · 就绪`);
+  paintIcons(); toast(`已切换到 ${apps.find(a=>a.id===id).name}`);
+ }
+ function openDialog(title,content,subtitle='') {
+  priorFocus=document.activeElement;
+  const layer=device.querySelector('.modal-layer');
+  layer.innerHTML=`<section class="o-dialog" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="dialog-heading"><h3>${esc(title)}</h3><button type="button" class="icon-button" data-action="close-dialog" aria-label="关闭">${icon('x')}</button></div>${subtitle?`<p class="dialog-subtitle">${esc(subtitle)}</p>`:''}${content}</section>`;
+  layer.hidden=false; device.querySelector('.systembar').inert=true; device.querySelector('.workspace').inert=true;
+  paintIcons(); const first=layer.querySelector('textarea,input,button'); if(first) first.focus({preventScroll:true});
+ }
+ function closeDialog() { const layer=device.querySelector('.modal-layer'); layer.hidden=true; layer.innerHTML=''; device.querySelector('.systembar').inert=false; device.querySelector('.workspace').inert=false; if(priorFocus?.isConnected) priorFocus.focus({preventScroll:true}); }
+ function settings() {
+  openDialog('按你的习惯来',`<label class="setting-row"><span>指针速度<small data-value="sensitivity">${state.sensitivity}% · 精细控制</small></span><input type="range" min="10" max="100" value="${state.sensitivity}" data-range="sensitivity" aria-label="指针速度"></label><label class="setting-row"><span>自然滚动<small>内容跟随手指的移动方向</small></span><input type="checkbox" class="switch" data-setting="natural" ${state.natural?'checked':''}></label><label class="setting-row"><span>按键触感<small>轻触时提供反馈</small></span><input type="checkbox" class="switch" data-setting="haptics" ${state.haptics?'checked':''}></label><label class="setting-row"><span>亮度<small data-value="brightness">${state.brightness}%</small></span><input type="range" min="0" max="100" value="${state.brightness}" data-range="brightness" aria-label="亮度"></label><button type="button" class="dialog-primary" data-action="close-dialog">完成</button>`,'触控、手势与显示');
+ }
+ function gestures() {
+  const rows=[['mouse-pointer-2','单指移动','在触控区拖动，移动电脑指针'],['hand','双指滚动','两指上下滑动，或用鼠标滚轮体验'],['layers','三指切换','三指水平滑动，切换工作空间'],['mouse','轻点与右键','轻点单击 · 双指轻点右键']];
+  openDialog('顺手，就好',rows.map(r=>`<div class="gesture-row"><span class="gesture-icon">${icon(r[0])}</span><div><strong>${r[1]}</strong><small>${r[2]}</small></div></div>`).join('')+`<button type="button" class="dialog-primary" data-action="close-dialog">开始触控</button>`);
+ }
+ function executeKey(button) {
+  button.classList.add('key-flash'); setTimeout(()=>button.classList.remove('key-flash'),180);
+  const modifiers=Array.from(device.querySelectorAll('[data-modifier][aria-pressed="true"]')).map(b=>b.dataset.modifier==='command'?'⌘':'⇧').join('');
+  eventText(`${modifiers}${button.dataset.command}`); toast(`⌨ ${modifiers}${button.dataset.command}`);
+ }
+ function bindPad() {
+  const surface=device.querySelector('.touch-surface'), cursor=surface.querySelector('.pad-cursor');
+  const points=new Map(); let gestureStart=null; let pointerX=surface.clientWidth*.53,pointerY=surface.clientHeight*.5;
+  function ripple(x,y) { const el=document.createElement('span'); el.className='pad-ripple'; el.style.left=x+'px';el.style.top=y+'px';surface.append(el);setTimeout(()=>el.remove(),680); }
+  surface.addEventListener('pointerdown',e=>{
+   const rect=surface.getBoundingClientRect(); points.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   surface.setPointerCapture(e.pointerId); startPoint={x:e.clientX,y:e.clientY,time:Date.now(),count:points.size};
+   if(points.size>1) { gestureStart={x:e.clientX,y:e.clientY,count:points.size}; }
+   pointerX=e.clientX-rect.left;pointerY=e.clientY-rect.top;cursor.style.opacity='1';cursor.style.left=pointerX+'px';cursor.style.top=pointerY+'px';
+   surface.classList.add('is-touching'); ripple(pointerX,pointerY); eventText(points.size>1?`${points.size} 指手势`:'正在移动指针');
+  });
+  surface.addEventListener('pointermove',e=>{
+   if(!points.has(e.pointerId)) return;
+   const last=points.get(e.pointerId); const dx=e.clientX-last.x,dy=e.clientY-last.y;
+   if(points.size===1) { const speed=.4+state.sensitivity/60;pointerX=Math.max(0,Math.min(surface.clientWidth-20,pointerX+dx*speed));pointerY=Math.max(0,Math.min(surface.clientHeight-20,pointerY+dy*speed));cursor.style.left=pointerX+'px';cursor.style.top=pointerY+'px'; }
+   else eventText(points.size===2?`双指滚动 ${dy>0?'↓':'↑'}`:`三指切换 ${dx>0?'→':'←'}`);
+   points.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  });
+  function end(e) {
+   if(!points.has(e.pointerId))return;
+   const count=gestureStart?.count||points.size;points.delete(e.pointerId);
+   if(points.size===0) {
+    surface.classList.remove('is-touching');
+    const dist=startPoint?Math.hypot(e.clientX-startPoint.x,e.clientY-startPoint.y):100;
+    if(count===3){toast('切换工作空间');eventText('三指切换');}
+    else if(count===2 && dist<12){toast('右键菜单');eventText('双指轻点 · 右键');}
+    else if(dist<7&&startPoint&&Date.now()-startPoint.time<450){eventText('轻点 · 单击');ripple(pointerX,pointerY);}
+    else eventText(`${apps.find(a=>a.id===state.app).name} · 就绪`);
+    gestureStart=null;
+   }
+  }
+  surface.addEventListener('pointerup',end);
+  surface.addEventListener('pointercancel',e=>{points.delete(e.pointerId); if(!points.size)surface.classList.remove('is-touching');});
+  surface.addEventListener('wheel',e=>{e.preventDefault();const down=state.natural?e.deltaY>0:e.deltaY<0;eventText(`双指滚动 ${down?'↓':'↑'}`);},{passive:false});
+  surface.addEventListener('contextmenu',e=>{e.preventDefault();eventText('右键菜单');toast('右键 · 已触发');});
+  surface.addEventListener('click',e=>{if(e.detail===0){eventText('轻点 · 单击');ripple(surface.clientWidth/2,surface.clientHeight/2);}});
+ }
+ function setRecording(active,cancelled=false) {
+  const b=device.querySelector('.talk');if(!b)return;
+  state.recording=active;b.classList.toggle('recording',active);b.innerHTML=icon(active?'audio-lines':'mic')+`<span>${active?'松开结束':'按住说话'}</span>`;
+  if(active) eventText('语音演示 · 正在聆听');
+  else if(!cancelled) {state.draft='把这个页面的间距再调整一下。';device.querySelector('.draft-note').textContent='演示输入已就绪 · 点击发送';eventText('已转为文字 · 等待发送');toast('演示语音已转为文字');}
+  else eventText('已取消语音输入');
+  paintIcons();
+ }
+ function bindVoice() {
+  const talk=device.querySelector('.talk');
+  talk.addEventListener('pointerdown',e=>{recordPointer=e.pointerId;talk.setPointerCapture(e.pointerId);setRecording(true);});
+  talk.addEventListener('pointerup',e=>{if(recordPointer===e.pointerId){recordPointer=null;setRecording(false);}});
+  talk.addEventListener('pointercancel',()=>{recordPointer=null;setRecording(false,true);});
+  talk.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();spaceHeld=true;setRecording(true);}});
+  talk.addEventListener('keyup',e=>{if(spaceHeld&&(e.key===' '||e.key==='Enter')){e.preventDefault();spaceHeld=false;setRecording(false);}});
+  talk.addEventListener('blur',()=>{if(state.recording){spaceHeld=false;setRecording(false,true);}});
+  const send=device.querySelector('.send');
+  let longSend=false;
+  send.addEventListener('pointerdown',()=>{longSend=false;heldTimer=setTimeout(()=>{longSend=true;state.draft+='\n';toast('已插入换行');eventText('换行 ⇧↵');},600);});
+  ['pointerup','pointerleave','pointercancel'].forEach(t=>send.addEventListener(t,()=>clearTimeout(heldTimer)));
+  send.addEventListener('click',e=>{e.stopPropagation();if(longSend)return;eventText(state.draft?'文字已发送':'回车 ↵');toast(state.draft?'文字已发送到输入框（演示）':'回车 ↵');state.draft='';device.querySelector('.draft-note').textContent='松开发送到输入框 · 长按 ↵ 换行';});
+ }
+ root.addEventListener('click',e=>{
+  const b=e.target.closest('button');
+  if(!b){if(e.target.classList.contains('modal-layer'))closeDialog();return;}
+  if(b.dataset.designSelect){state.design=b.dataset.designSelect;state.expanded=false;state.recording=false;render();root.querySelector(`[data-design-select="${state.design}"]`).focus({preventScroll:true});return;}
+  if(b.dataset.app){updateApp(b.dataset.app);return;}
+  if(b.dataset.mode){state.mode=b.dataset.mode;render();device.querySelector(`[data-mode="${state.mode}"]`).focus({preventScroll:true});return;}
+  if(b.dataset.key){executeKey(b);return;}
+  if(b.dataset.modifier){const active=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',active);b.style.background=active?'var(--o-accent-soft)':'';toast(`${b.dataset.modifier==='command'?'Command':'Shift'} ${active?'已按住':'已松开'}`);return;}
+  const action=b.dataset.action;if(!action)return;
+  if(action==='settings')settings();
+  else if(action==='close-dialog')closeDialog();
+  else if(action==='gestures')gestures();
+  else if(action==='keyboard')openDialog('发送文字',`<textarea class="text-input" aria-label="要发送给电脑的文字" placeholder="输入你想对 AI 说的话…">${esc(state.draft)}</textarea><button type="button" class="dialog-primary" data-action="send-text">发送到电脑</button>`,'在电脑当前的输入框继续工作');
+  else if(action==='send-text'){state.draft=device.querySelector('.text-input').value;if(!state.draft.trim()){device.querySelector('.text-input').focus();return;}closeDialog();eventText('文字已发送');toast('文字已发送到输入框（演示）');state.draft='';}
+  else if(action==='allapps')openDialog('你的常用 App',`<div class="app-grid">${appButtons()}</div><button type="button" class="dialog-primary" data-action="close-dialog">完成</button>`,'轻点应用，切换电脑窗口与 Touch Bar');
+  else if(action==='keys')openDialog('顺手的快捷键',`<div class="dialog-keygrid">${(state.mode==='coding'?keyData:dailyKeys).map(k=>keyButton([k[0],k[1],k[2],'',k[4]])).join('')}</div>`,'轻点执行 · 可在设置中调整触感');
+  else if(action==='connection')openDialog('已连接到 Mac',`<div class="device-card">${icon('laptop')}<div><strong>小西的 MacBook Pro</strong><small>本地网络 · 连接稳定</small></div><span class="online-dot"></span></div><div class="setting-row"><span>连接延迟</span><span>6 ms</span></div><div class="setting-row"><span>平板电量</span><span>86%</span></div><div class="setting-row"><span>Touch Bar</span><span>跟随当前 App</span></div><button type="button" class="dialog-primary" data-action="close-dialog">继续使用</button>`,'演示连接状态');
+  else if(action==='expand'){state.expanded=!state.expanded;render();device.querySelector('[data-action="expand"]').focus({preventScroll:true});}
+  else if(action==='play'){state.playing=!state.playing;device.querySelector('.touchbar').outerHTML=touchbar();paintIcons();toast(state.playing?'正在播放 · 专注歌单':'已暂停');}
+  else if(action==='mute'){state.muted=!state.muted;device.querySelector('.touchbar').outerHTML=touchbar();paintIcons();toast(state.muted?'已静音':'已恢复音量');}
+  else if(action==='address')openDialog('搜索或输入网址',`<textarea class="text-input" aria-label="网址或搜索词" placeholder="输入网址或搜索词…"></textarea><button type="button" class="dialog-primary" data-action="send-text">在 Chrome 打开</button>`,'Touch Bar · Chrome');
+  else if(action!=='talk'&&action!=='send'){
+   const messages={'escape':'Esc','new-chat':'新建对话 ⌘L','terminal':'切换终端 ⌃`','run':'运行当前任务','back':'后退 ⌘[','forward':'前进 ⌘]','refresh':'刷新 ⌘R','bookmark':'收藏当前网页','previous':'上一首','next':'下一首','playlist':'专注歌单','new-window':'新建 Finder 窗口','search-files':'搜索文件','view-files':'切换文件视图','meeting-mic':'切换会议麦克风','meeting-video':'切换会议摄像头','share-screen':'共享屏幕','search':'搜索 ⌘F','switch-window':'切换窗口 ⌘⇥'};
+   toast(messages[action]||action);eventText(messages[action]||action);
+  }
+ });
+ root.addEventListener('input',e=>{
+  if(e.target.dataset.range){const name=e.target.dataset.range;state[name]=Number(e.target.value);device.querySelectorAll(`[data-range="${name}"]`).forEach(x=>{if(x!==e.target)x.value=state[name];});const value=device.querySelector(`[data-value="${name}"]`);if(value)value.textContent=state[name]+'%';eventText(`${name==='volume'?'音量':name==='brightness'?'亮度':'指针速度'} ${state[name]}%`);}
+ });
+ root.addEventListener('change',e=>{if(e.target.dataset.setting){state[e.target.dataset.setting]=e.target.checked;}});
+ root.addEventListener('keydown',e=>{
+  const layer=device.querySelector('.modal-layer');
+  if(!layer.hidden){
+   if(e.key==='Escape'){e.preventDefault();closeDialog();}
+   if(e.key==='Tab'){const focusables=Array.from(layer.querySelectorAll('button,input,textarea')).filter(x=>!x.disabled);const first=focusables[0],last=focusables[focusables.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}
+  }
+ });
+ render();
+ if(globalThis.Tweak){
+  const designOptions={direction:state.design};
+  const tweak=new Tweak({container:device,onChange:()=>{state.design=designOptions.direction;state.expanded=false;render();}});
+  tweak.addSelect(designOptions,'direction',{label:'设计方向',options:concepts.map(c=>({label:c.name,value:c.id}))});
+ }
+})();
+</script>

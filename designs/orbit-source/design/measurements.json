@@ -1,0 +1,146 @@
+{
+  "referenceCanvas": {
+    "width": 1280,
+    "height": 800,
+    "unit": "CSS px"
+  },
+  "variants": {
+    "graphite": [
+      {
+        "component": "systembar",
+        "height": 70,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      {
+        "component": "workspace",
+        "height": 730,
+        "width": 1280,
+        "x": 0,
+        "y": 70
+      },
+      {
+        "component": "apps-panel o-panel",
+        "height": 84,
+        "width": 1244,
+        "x": 18,
+        "y": 698
+      },
+      {
+        "component": "commands-panel o-panel",
+        "height": 542,
+        "width": 316,
+        "x": 946,
+        "y": 143
+      },
+      {
+        "component": "keygrid",
+        "height": 220,
+        "width": 280,
+        "x": 964,
+        "y": 208
+      },
+      {
+        "component": "talk",
+        "height": 60,
+        "width": 203,
+        "x": 964,
+        "y": 604
+      },
+      {
+        "component": "send",
+        "height": 60,
+        "width": 69,
+        "x": 1175,
+        "y": 604
+      },
+      {
+        "component": "trackpad",
+        "height": 542,
+        "width": 915,
+        "x": 18,
+        "y": 143
+      },
+      {
+        "component": "touchbar",
+        "height": 60,
+        "width": 1244,
+        "x": 18,
+        "y": 70
+      }
+    ],
+    "titanium": [
+      {
+        "component": "systembar",
+        "height": 71,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      },
+      {
+        "component": "workspace",
+        "height": 729,
+        "width": 1280,
+        "x": 0,
+        "y": 71
+      },
+      {
+        "component": "apps-panel o-panel",
+        "height": 635,
+        "width": 220,
+        "x": 17,
+        "y": 145
+      },
+      {
+        "component": "edit-grid",
+        "height": 158,
+        "width": 192,
+        "x": 31,
+        "y": 577
+      },
+      {
+        "component": "commands-panel o-panel",
+        "height": 635,
+        "width": 220,
+        "x": 1043,
+        "y": 145
+      },
+      {
+        "component": "keygrid",
+        "height": 209,
+        "width": 192,
+        "x": 1057,
+        "y": 205
+      },
+      {
+        "component": "talk",
+        "height": 55,
+        "width": 192,
+        "x": 1057,
+        "y": 652
+      },
+      {
+        "component": "send",
+        "height": 47,
+        "width": 192,
+        "x": 1057,
+        "y": 715
+      },
+      {
+        "component": "trackpad",
+        "height": 635,
+        "width": 778,
+        "x": 251,
+        "y": 145
+      },
+      {
+        "component": "touchbar",
+        "height": 60,
+        "width": 1246,
+        "x": 17,
+        "y": 71
+      }
+    ]
+  }
+}
