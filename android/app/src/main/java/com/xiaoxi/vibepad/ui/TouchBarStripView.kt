@@ -8,17 +8,11 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
-import android.view.Gravity
 import android.view.MotionEvent
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
 import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.TextView
 import com.xiaoxi.vibepad.input.TouchBarFrame
-import com.xiaoxi.vibepad.input.UsageSnapshot
-import com.xiaoxi.vibepad.input.UsageWindow
 import com.xiaoxi.vibepad.input.WifiInputSink
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -29,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.roundToInt
 
 /**
- * 顶部条：Mac 真实 Touch Bar 画面回传，或本地额度栏。三套皮肤共用同一份实现，
+ * 顶部条：Mac 真实 Touch Bar 画面回传。三套皮肤共用同一份实现，
  * 只是摆放位置不同（经典黑与状态栏同一行，02 / 05 单独一行）。
  *
  * 设计原型里的固定 Touch Bar 标签、亮度与音量滑杆不实现：本项目回传的是 Mac 原生
@@ -42,14 +36,6 @@ class TouchBarStripView(
 
     private val handler = Handler(Looper.getMainLooper())
     private val touchBarView = TouchBarImageView(context, touchBarSinkProvider)
-    private val quotaContainer = LinearLayout(context)
-    private val quotaViews = listOf(
-        QuotaView(context, "Claude 5h"),
-        QuotaView(context, "Claude 7d"),
-        QuotaView(context, "Fable 5"),
-        QuotaView(context, "Codex 5h"),
-        QuotaView(context, "Codex 7d"),
-    )
     private val pendingFrame = AtomicReference<QueuedTouchBarFrame?>()
     private val decodeScheduled = AtomicBoolean(false)
     private val receivedSequence = AtomicLong(0L)
@@ -57,62 +43,29 @@ class TouchBarStripView(
     private var palette = Skin.CLASSIC.palette
     private var cornerRadiusDp = 0f
     private var subscribedSink: WifiInputSink? = null
-    private var lastUsage = UsageSnapshot()
 
-    @Volatile private var headerMode = HeaderMode.TOUCH_BAR
     @Volatile private var isWindowAttached = false
     @Volatile private var decodeGeneration = 0L
     @Volatile private var decodeExecutor: ExecutorService? = null
 
     init {
-        quotaContainer.apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            quotaViews.forEachIndexed { index, quota ->
-                addView(quota, LinearLayout.LayoutParams(0, dp(27), 1f).apply {
-                    marginStart = if (index == 0) 0 else dp(2)
-                    marginEnd = if (index == quotaViews.lastIndex) 0 else dp(2)
-                })
-            }
-        }
-        addView(quotaContainer, LayoutParams(MATCH_PARENT, MATCH_PARENT))
         addView(touchBarView, LayoutParams(MATCH_PARENT, MATCH_PARENT))
         applyPalette(palette, cornerRadiusDp)
-        applyHeaderMode()
     }
 
     fun applyPalette(value: SkinPalette, cornerRadius: Float) {
         palette = value
         cornerRadiusDp = cornerRadius
         touchBarView.applyPalette(value)
-        quotaViews.forEach { it.applyPalette(value) }
         background = GradientDrawable().apply {
             setColor(value.touchBar)
             this.cornerRadius = dp(cornerRadius).toFloat()
         }
     }
 
-    fun setHeaderMode(mode: HeaderMode) {
-        if (headerMode == mode) return
-        headerMode = mode
-        applyHeaderMode()
-        syncSubscription()
-    }
-
-    fun headerMode(): HeaderMode = headerMode
-
-    fun setUsage(usage: UsageSnapshot) {
-        lastUsage = usage
-        val windows = listOf(
-            usage.claudeFiveHour, usage.claudeSevenDay, usage.claudeFable,
-            usage.codexFiveHour, usage.codexWeekly,
-        )
-        quotaViews.zip(windows).forEach { (view, value) -> view.setUsage(value) }
-    }
-
     /** 可能来自网络线程；解码永远不在主线程执行。 */
     fun setTouchBarFrame(frame: TouchBarFrame) {
-        if (headerMode != HeaderMode.TOUCH_BAR || !isWindowAttached || frame.bytes.isEmpty()) return
+        if (!isWindowAttached || frame.bytes.isEmpty()) return
         val queued = QueuedTouchBarFrame(
             sequence = receivedSequence.incrementAndGet(),
             generation = decodeGeneration,
@@ -124,11 +77,6 @@ class TouchBarStripView(
 
     /** 连接状态变化后由外层调用，重新决定是否订阅 Touch Bar 画面。 */
     fun refresh() = syncSubscription()
-
-    private fun applyHeaderMode() {
-        touchBarView.visibility = if (headerMode == HeaderMode.TOUCH_BAR) VISIBLE else GONE
-        quotaContainer.visibility = if (headerMode == HeaderMode.QUOTA) VISIBLE else GONE
-    }
 
     private fun scheduleDecode() {
         val executor = decodeExecutor ?: return
@@ -142,7 +90,6 @@ class TouchBarStripView(
                         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: continue
                         handler.post {
                             if (isWindowAttached &&
-                                headerMode == HeaderMode.TOUCH_BAR &&
                                 queued.generation == decodeGeneration &&
                                 queued.sequence > displayedSequence
                             ) {
@@ -165,9 +112,7 @@ class TouchBarStripView(
 
     private fun syncSubscription() {
         val candidate = touchBarSinkProvider()
-        val shouldSubscribe = isWindowAttached &&
-            headerMode == HeaderMode.TOUCH_BAR &&
-            candidate?.isConnected == true
+        val shouldSubscribe = isWindowAttached && candidate?.isConnected == true
         if (shouldSubscribe && subscribedSink !== candidate) {
             subscribedSink?.setTouchBarSubscribed(false)
             candidate?.setTouchBarSubscribed(true)
@@ -194,7 +139,6 @@ class TouchBarStripView(
                 Thread(runnable, "VibePad-TouchBarDecode").apply { isDaemon = true }
             }
         }
-        setUsage(lastUsage)
         syncSubscription()
     }
 
@@ -315,42 +259,5 @@ class TouchBarStripView(
                 )
             )
         }
-    }
-
-    private class QuotaView(context: Context, private val label: String) : LinearLayout(context) {
-        private val text = TextView(context)
-        private val bar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal)
-        private val density = resources.displayMetrics.density
-
-        init {
-            orientation = VERTICAL
-            setPadding(dp(6), dp(2), dp(6), dp(2))
-            addView(text.apply {
-                this.text = "$label  --"
-                textSize = 8.5f
-                maxLines = 1
-                gravity = Gravity.CENTER_VERTICAL
-            }, LayoutParams(MATCH_PARENT, dp(15)))
-            addView(bar.apply {
-                max = 100
-                progress = 0
-            }, LayoutParams(MATCH_PARENT, dp(3)))
-        }
-
-        fun applyPalette(palette: SkinPalette) {
-            background = GradientDrawable().apply {
-                setColor(palette.key)
-                cornerRadius = dp(5).toFloat()
-            }
-            text.setTextColor(palette.muted)
-            bar.progressDrawable?.setTint(palette.accent)
-        }
-
-        fun setUsage(window: UsageWindow) {
-            text.text = "$label  ${window.usedPercent?.let { "$it%" } ?: "--"}"
-            bar.progress = window.usedPercent ?: 0
-        }
-
-        private fun dp(value: Int) = (value * density + 0.5f).toInt()
     }
 }

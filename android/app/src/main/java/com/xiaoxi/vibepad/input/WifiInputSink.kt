@@ -404,7 +404,6 @@ class WifiInputSink(
                             recordRtt((SystemClock.elapsedRealtimeNanos() - lastPingSentAtNanos) / 1_000_000.0)
                             parseHealth(payload)
                         }
-                        TYPE_USAGE -> if (connected) parseUsage(payload)
                         TYPE_APPS_BEGIN -> if (connected) remoteDataListener.onAppCatalogStarted()
                         TYPE_APP_ITEM -> if (connected) parseRemoteApp(payload)
                         TYPE_APPS_END -> if (connected) remoteDataListener.onAppCatalogFinished()
@@ -577,30 +576,6 @@ class WifiInputSink(
             Log.w(TAG, "Invalid helper health payload", error)
         }
     }
-
-    private fun parseUsage(payload: ByteArray) {
-        try {
-            val root = JSONObject(payload.toString(Charsets.UTF_8))
-            val claude = root.optJSONObject("claude")
-            val codex = root.optJSONObject("codex")
-            remoteDataListener.onUsageSnapshot(UsageSnapshot(
-                claudeFiveHour = usageWindow(claude?.optJSONObject("five_hour")),
-                claudeSevenDay = usageWindow(claude?.optJSONObject("seven_day")),
-                // Fable is intentionally blank unless the local normalized endpoint
-                // exposes a real field. We never infer it from another quota.
-                claudeFable = usageWindow(claude?.optJSONObject("fable_5")),
-                codexFiveHour = usageWindow(codex?.optJSONObject("five_hour")),
-                codexWeekly = usageWindow(codex?.optJSONObject("weekly")),
-            ))
-        } catch (error: Exception) {
-            Log.w(TAG, "Invalid usage payload", error)
-        }
-    }
-
-    private fun usageWindow(json: JSONObject?): UsageWindow = UsageWindow(
-        usedPercent = json?.optIntOrNull("used_pct"),
-        resetsAt = json?.opt("reset_at")?.takeUnless { it == JSONObject.NULL }?.toString(),
-    )
 
     private fun parseRemoteApp(payload: ByteArray) {
         try {
@@ -875,7 +850,6 @@ class WifiInputSink(
         private const val TYPE_GESTURE = 0x15
         private const val TYPE_PING = 0x20
         private const val TYPE_PONG = 0x21
-        private const val TYPE_USAGE = 0x30
         private const val TYPE_APPS_REQUEST = 0x40
         private const val TYPE_APPS_BEGIN = 0x41
         private const val TYPE_APP_ITEM = 0x42

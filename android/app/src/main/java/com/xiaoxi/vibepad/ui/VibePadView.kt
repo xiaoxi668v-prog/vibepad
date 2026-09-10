@@ -33,7 +33,6 @@ import com.xiaoxi.vibepad.input.InputSink
 import com.xiaoxi.vibepad.input.MicrophoneStreamer
 import com.xiaoxi.vibepad.input.RemoteApp
 import com.xiaoxi.vibepad.input.TouchBarFrame
-import com.xiaoxi.vibepad.input.UsageSnapshot
 import com.xiaoxi.vibepad.input.WifiInputSink
 import java.util.Locale
 
@@ -107,12 +106,8 @@ class VibePadView(
         setFrontmostApp(health.frontmostApp)
     }
 
-    fun setUsageSnapshot(usage: UsageSnapshot) = touchBarStrip.setUsage(usage)
-
     /** 可能来自网络线程；解码永远不在主线程执行。 */
     fun setTouchBarFrame(frame: TouchBarFrame) = touchBarStrip.setTouchBarFrame(frame)
-
-    fun setHeaderMode(mode: HeaderMode) = touchBarStrip.setHeaderMode(mode)
 
     fun currentSkin(): Skin = config.skin
 
@@ -173,7 +168,6 @@ class VibePadView(
         val skinChanged = updated.skin != config.skin
         config = updated
         palette = updated.skin.palette
-        touchBarStrip.setHeaderMode(updated.headerMode)
         if (skinChanged) {
             buildLayout()
         } else {
@@ -209,7 +203,6 @@ class VibePadView(
 
         setBackgroundColor(palette.background)
         trackpad.applyPalette(palette)
-        touchBarStrip.setHeaderMode(config.headerMode)
         systemBar = createSystemBar()
         systemBar.applyPalette(palette)
 
