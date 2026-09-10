@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.Button
 import android.widget.RadioButton
@@ -23,9 +22,7 @@ import com.xiaoxi.vibepad.input.MicrophoneStreamer
 import com.xiaoxi.vibepad.input.RemoteApp
 import com.xiaoxi.vibepad.input.RemoteDataListener
 import com.xiaoxi.vibepad.input.TouchBarFrame
-import com.xiaoxi.vibepad.input.UsageSnapshot
 import com.xiaoxi.vibepad.input.WifiInputSink
-import com.xiaoxi.vibepad.ui.HeaderMode
 import com.xiaoxi.vibepad.ui.NoOpInputSink
 import com.xiaoxi.vibepad.ui.PadConfig
 import com.xiaoxi.vibepad.ui.PadConfigStore
@@ -76,9 +73,6 @@ class MainActivity : Activity() {
                     vibePadView?.setHelperHealth(health)
                 }
 
-                override fun onUsageSnapshot(usage: UsageSnapshot) = runOnUiThread {
-                    vibePadView?.setUsageSnapshot(usage)
-                }
 
                 override fun onTouchBarFrame(frame: TouchBarFrame) {
                     vibePadView?.setTouchBarFrame(frame)
@@ -293,7 +287,6 @@ class MainActivity : Activity() {
                 bottomMargin = dp(4)
             })
             addView(skinControl(config.skin))
-            addView(headerModeControl(config.headerMode))
             addView(Button(this@MainActivity).apply {
                 isAllCaps = false
                 text = "选择常用 App"
@@ -389,23 +382,6 @@ class MainActivity : Activity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ))
-        }
-    }
-
-    /** 顶部区域：Mac 真实 Touch Bar 画面，或本地额度栏。 */
-    private fun headerModeControl(current: HeaderMode): View {
-        val density = resources.displayMetrics.density
-        fun dp(value: Int) = (value * density + 0.5f).toInt()
-        return CheckBox(this).apply {
-            text = "顶部显示 Mac Touch Bar（关闭改为显示额度栏）"
-            textSize = 13f
-            isChecked = current == HeaderMode.TOUCH_BAR
-            setPadding(0, dp(4), 0, dp(4))
-            setOnCheckedChangeListener { _, checked ->
-                configStore.update {
-                    it.copy(headerMode = if (checked) HeaderMode.TOUCH_BAR else HeaderMode.QUOTA)
-                }
-            }
         }
     }
 

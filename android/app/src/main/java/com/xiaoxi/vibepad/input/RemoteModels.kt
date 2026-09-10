@@ -14,19 +14,6 @@ data class HelperHealth(
         get() = accessibilityTrusted && protocolVersion == 2
 }
 
-data class UsageWindow(
-    val usedPercent: Int? = null,
-    val resetsAt: String? = null,
-)
-
-data class UsageSnapshot(
-    val claudeFiveHour: UsageWindow = UsageWindow(),
-    val claudeSevenDay: UsageWindow = UsageWindow(),
-    val claudeFable: UsageWindow = UsageWindow(),
-    val codexFiveHour: UsageWindow = UsageWindow(),
-    val codexWeekly: UsageWindow = UsageWindow(),
-)
-
 data class RemoteApp(
     val name: String,
     val bundleId: String,
@@ -43,7 +30,6 @@ data class TouchBarFrame(
 
 interface RemoteDataListener {
     fun onHelperHealth(health: HelperHealth) = Unit
-    fun onUsageSnapshot(usage: UsageSnapshot) = Unit
     fun onAppCatalogStarted() = Unit
     fun onRemoteApp(app: RemoteApp) = Unit
     fun onAppCatalogFinished() = Unit

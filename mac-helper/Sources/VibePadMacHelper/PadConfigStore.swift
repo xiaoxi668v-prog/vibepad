@@ -29,13 +29,11 @@ struct PadShortcut: Equatable {
 struct PadConfig: Equatable {
     static let skins = ["classic", "graphite", "titanium"]
     static let skinNames = ["classic": "经典", "graphite": "深空专业", "titanium": "双手操控"]
-    static let headerModes = ["touchbar", "quota"]
     static let maxApps = 9
     static let maxShortcuts = 12
 
     var revision: Int = 0
     var skin: String = "classic"
-    var headerMode: String = "touchbar"
     var apps: [String] = []
     var shortcuts: [PadShortcut] = []
     var mouseSensitivity: Double = 1
@@ -44,7 +42,6 @@ struct PadConfig: Equatable {
     /// revision 之外的内容是否相同：相同就不必回推，也不必重建平板界面。
     func sameContent(as other: PadConfig) -> Bool {
         skin == other.skin &&
-            headerMode == other.headerMode &&
             apps == other.apps &&
             shortcuts == other.shortcuts &&
             mouseSensitivity == other.mouseSensitivity &&
@@ -55,7 +52,6 @@ struct PadConfig: Equatable {
         [
             "revision": revision,
             "skin": skin,
-            "headerMode": headerMode,
             "apps": apps,
             "shortcuts": shortcuts.map(\.json),
             "mouseSensitivity": mouseSensitivity,
@@ -74,8 +70,6 @@ struct PadConfig: Equatable {
         revision = object["revision"] as? Int ?? 0
         let skin = object["skin"] as? String ?? "classic"
         self.skin = PadConfig.skins.contains(skin) ? skin : "classic"
-        let headerMode = object["headerMode"] as? String ?? "touchbar"
-        self.headerMode = PadConfig.headerModes.contains(headerMode) ? headerMode : "touchbar"
         apps = ((object["apps"] as? [Any]) ?? [])
             .compactMap { $0 as? String }
             .filter { !$0.isEmpty }

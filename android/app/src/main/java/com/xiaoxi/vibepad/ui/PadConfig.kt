@@ -6,16 +6,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.CopyOnWriteArrayList
 
-/** 顶部条内容：Mac 真实 Touch Bar 画面，或本地额度栏。 */
-enum class HeaderMode(val id: String) {
-    TOUCH_BAR("touchbar"),
-    QUOTA("quota");
-
-    companion object {
-        fun fromId(id: String?): HeaderMode = entries.firstOrNull { it.id == id } ?: TOUCH_BAR
-    }
-}
-
 /** 自定义快捷键（Vibe Coding 条）。 */
 data class CustomShortcut(val label: String, val usage: Int, val modifiers: Int)
 
@@ -29,7 +19,6 @@ data class CustomShortcut(val label: String, val usage: Int, val modifiers: Int)
 data class PadConfig(
     val revision: Long = 0L,
     val skin: Skin = Skin.CLASSIC,
-    val headerMode: HeaderMode = HeaderMode.TOUCH_BAR,
     val apps: List<String> = emptyList(),
     val shortcuts: List<CustomShortcut> = emptyList(),
     val mouseSensitivity: Float = 1f,
@@ -38,7 +27,6 @@ data class PadConfig(
     /** 比较时忽略 revision：只有内容不同才值得重建界面或回推对端。 */
     fun sameContent(other: PadConfig): Boolean =
         skin == other.skin &&
-            headerMode == other.headerMode &&
             apps == other.apps &&
             shortcuts == other.shortcuts &&
             mouseSensitivity == other.mouseSensitivity &&
@@ -47,7 +35,6 @@ data class PadConfig(
     fun toJson(): JSONObject = JSONObject().apply {
         put("revision", revision)
         put("skin", skin.id)
-        put("headerMode", headerMode.id)
         put("apps", JSONArray(apps))
         put("shortcuts", JSONArray().apply {
             shortcuts.forEach {
@@ -84,7 +71,6 @@ data class PadConfig(
             return PadConfig(
                 revision = json.optLong("revision", 0L),
                 skin = Skin.fromId(json.optString("skin")),
-                headerMode = HeaderMode.fromId(json.optString("headerMode")),
                 apps = apps,
                 shortcuts = shortcuts,
                 mouseSensitivity = json.optDouble("mouseSensitivity", 1.0).toFloat()
@@ -123,7 +109,6 @@ class PadConfigStore private constructor(context: Context) {
     fun current(): PadConfig = PadConfig(
         revision = prefs.getLong(PREF_REVISION, 0L),
         skin = Skin.fromId(prefs.getString(PREF_SKIN, null)),
-        headerMode = HeaderMode.fromId(prefs.getString(PREF_HEADER_MODE, null)),
         apps = readApps(),
         shortcuts = readShortcuts(),
         mouseSensitivity = prefs.getFloat(PREF_MOUSE_SENSITIVITY, 1f)
@@ -178,7 +163,6 @@ class PadConfigStore private constructor(context: Context) {
         prefs.edit()
             .putLong(PREF_REVISION, config.revision)
             .putString(PREF_SKIN, config.skin.id)
-            .putString(PREF_HEADER_MODE, config.headerMode.id)
             .putString(PREF_APPS, JSONArray(config.apps).toString())
             .putString(PREF_SHORTCUTS, shortcuts.toString())
             .putFloat(PREF_MOUSE_SENSITIVITY, config.mouseSensitivity)
@@ -221,7 +205,6 @@ class PadConfigStore private constructor(context: Context) {
         const val PREFS_NAME = "vibepad_ui"
         private const val PREF_REVISION = "config_revision"
         private const val PREF_SKIN = "skin"
-        private const val PREF_HEADER_MODE = "header_mode"
         private const val PREF_APPS = "selected_apps"
         private const val PREF_SHORTCUTS = "custom_shortcuts"
         const val PREF_MOUSE_SENSITIVITY = "mouse_sensitivity"

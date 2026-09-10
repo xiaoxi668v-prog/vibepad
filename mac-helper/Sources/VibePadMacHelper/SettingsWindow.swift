@@ -10,7 +10,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var apps: [PadAppSummary] = []
     private var appPopUps: [NSPopUpButton] = []
     private let skinPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
-    private let headerPopUp = NSPopUpButton(frame: .zero, pullsDown: false)
     private let mouseSlider = NSSlider(value: 1, minValue: 0.5, maxValue: 2, target: nil, action: nil)
     private let scrollSlider = NSSlider(value: 1, minValue: 0.5, maxValue: 4, target: nil, action: nil)
     private let mouseValue = NSTextField(labelWithString: "1.0x")
@@ -54,13 +53,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         skinPopUp.target = self
         skinPopUp.action = #selector(skinChanged)
         content.addArrangedSubview(labeledRow("皮肤", skinPopUp))
-
-        headerPopUp.removeAllItems()
-        headerPopUp.addItem(withTitle: "Mac Touch Bar 画面")
-        headerPopUp.addItem(withTitle: "本地额度栏")
-        headerPopUp.target = self
-        headerPopUp.action = #selector(headerModeChanged)
-        content.addArrangedSubview(labeledRow("顶部区域", headerPopUp))
 
         content.addArrangedSubview(separator())
         content.addArrangedSubview(sectionTitle("常用 App"))
@@ -192,7 +184,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         if let index = PadConfig.skins.firstIndex(of: config.skin) {
             skinPopUp.selectItem(at: index)
         }
-        headerPopUp.selectItem(at: config.headerMode == "quota" ? 1 : 0)
 
         for (index, popUp) in appPopUps.enumerated() {
             popUp.removeAllItems()
@@ -242,11 +233,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         let index = skinPopUp.indexOfSelectedItem
         guard PadConfig.skins.indices.contains(index) else { return }
         store.update { $0.skin = PadConfig.skins[index] }
-    }
-
-    @objc private func headerModeChanged() {
-        guard !suppressActions else { return }
-        store.update { $0.headerMode = self.headerPopUp.indexOfSelectedItem == 1 ? "quota" : "touchbar" }
     }
 
     @objc private func appChanged(_ sender: NSPopUpButton) {

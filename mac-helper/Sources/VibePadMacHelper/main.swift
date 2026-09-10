@@ -32,7 +32,6 @@ private enum PacketType: UInt8 {
     case gesture = 0x15
     case ping = 0x20
     case pong = 0x21
-    case usage = 0x30
     case appsRequest = 0x40
     case appsBegin = 0x41
     case appItem = 0x42
@@ -506,75 +505,11 @@ private final class AppCatalog {
     }
 }
 
-private final class UsageProvider {
-    private let lock = NSLock()
-    private var cached: Data?
-    private var lastFetch = Date.distantPast
-    private var fetchInFlight = false
-
-    func refresh(completion: @escaping (Data?) -> Void) {
-        lock.lock()
-        let shouldFetch = !fetchInFlight && Date().timeIntervalSince(lastFetch) >= 30
-        let current = cached
-        if shouldFetch {
-            fetchInFlight = true
-            lastFetch = Date()
-        }
-        lock.unlock()
-        if !shouldFetch {
-            completion(current)
-            return
-        }
-        guard let url = URL(string: "http://127.0.0.1:8088/usage") else {
-            finish(data: nil, completion: completion)
-            return
-        }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 3
-        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
-            guard let self else { return }
-            self.finish(data: data.flatMap(Self.sanitized), completion: completion)
-        }.resume()
-    }
-
-    private func finish(data: Data?, completion: @escaping (Data?) -> Void) {
-        lock.lock()
-        if let data { cached = data }
-        fetchInFlight = false
-        let result = cached
-        lock.unlock()
-        completion(result)
-    }
-
-    private static func sanitized(_ data: Data) -> Data? {
-        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        func windows(_ value: Any?, names: [String]) -> [String: Any] {
-            guard let object = value as? [String: Any] else { return [:] }
-            var result: [String: Any] = [:]
-            for name in names {
-                if let window = object[name] as? [String: Any] {
-                    result[name] = [
-                        "used_pct": window["used_pct"] ?? NSNull(),
-                        "reset_at": window["reset_at"] ?? NSNull(),
-                    ]
-                }
-            }
-            return result
-        }
-        let safe: [String: Any] = [
-            "claude": windows(root["claude"], names: ["five_hour", "seven_day", "fable_5"]),
-            "codex": windows(root["codex"], names: ["five_hour", "weekly"]),
-        ]
-        return try? JSONSerialization.data(withJSONObject: safe)
-    }
-}
-
 private final class ClientSession {
     private let connection: NWConnection
     private let injector: InputInjector
     private let queue: DispatchQueue
     private let appCatalog: AppCatalog
-    private let usageProvider: UsageProvider
     private let pairingGate: PairingGate
     private let pairingStore: PairingStore
     private let audioSink: AudioSink
@@ -585,7 +520,6 @@ private final class ClientSession {
     private var pairingInProgress = false
     private var stopped = false
     private let serverNonce = PairingCrypto.randomBytes(count: 32)
-    private var lastUsageSentAt = Date.distantPast
     private let touchBar = WPTouchBarBridge()
     private var touchBarSubscribed = false
     private var nextTouchBarFrameID: UInt32 = 1
@@ -596,7 +530,6 @@ private final class ClientSession {
         injector: InputInjector,
         queue: DispatchQueue,
         appCatalog: AppCatalog,
-        usageProvider: UsageProvider,
         pairingGate: PairingGate,
         pairingStore: PairingStore,
         audioSink: AudioSink,
@@ -608,7 +541,6 @@ private final class ClientSession {
         self.injector = injector
         self.queue = queue
         self.appCatalog = appCatalog
-        self.usageProvider = usageProvider
         self.pairingGate = pairingGate
         self.pairingStore = pairingStore
         self.audioSink = audioSink
@@ -690,13 +622,6 @@ private final class ClientSession {
             injector.gesture(packet.payload[0])
         case .ping:
             send(type: .pong, sequence: packet.sequence, payload: injector.healthPayload())
-            if Date().timeIntervalSince(lastUsageSentAt) >= 30 {
-                lastUsageSentAt = Date()
-                usageProvider.refresh { [weak self] data in
-                    guard let self, let data else { return }
-                    self.queue.async { self.send(type: .usage, sequence: packet.sequence, payload: data) }
-                }
-            }
         case .appsRequest:
             send(type: .appsBegin, sequence: packet.sequence)
             appCatalog.load { [weak self] apps in
@@ -986,7 +911,6 @@ private final class VibePadServer {
     private let queue = DispatchQueue(label: "com.xiaoxi.vibepad.mac-helper", qos: .userInteractive)
     private lazy var injector = InputInjector(queue: queue)
     private let appCatalog = AppCatalog()
-    private let usageProvider = UsageProvider()
     private let pairingGate: PairingGate
     private let pairingStore: PairingStore
     private let configStore: PadConfigStore
@@ -1052,7 +976,6 @@ private final class VibePadServer {
                 injector: self.injector,
                 queue: self.queue,
                 appCatalog: self.appCatalog,
-                usageProvider: self.usageProvider,
                 pairingGate: self.pairingGate,
                 pairingStore: self.pairingStore,
                 audioSink: self.audioSink,
