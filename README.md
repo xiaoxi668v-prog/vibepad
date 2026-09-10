@@ -19,9 +19,13 @@ backups/     安装前自动备份（本地产出，不进 git）
 ## 皮肤与配置
 
 平板端内置三套皮肤（经典 / 深空专业 / 双手操控），在平板设置弹层里切换。
-界面皮肤、顶部区域（Mac Touch Bar 画面或额度栏）、常用 App 和触控灵敏度
-也可以在 Mac 菜单栏的「VibePad 设置…」里配置，两端通过 `0x60/0x61/0x62`
-三个帧双向同步，Mac 侧存在 `~/Library/Application Support/VibePad/pad-config.json`。
+界面皮肤、常用 App 和触控灵敏度也可以在 Mac 菜单栏的「VibePad 设置…」里配置，
+两端通过 `0x60/0x61/0x62` 三个帧双向同步，Mac 侧存在
+`~/Library/Application Support/VibePad/pad-config.json`。
+
+> 本分支（opensource-release）为开源发布版：已移除私有「额度显示」功能
+> （原数据源是作者本机的私有服务，他人机器不可用）。完整功能版见
+> `claude/skin-adaptation-settings-oop3b4` 分支。
 
 ## 构建与发布
 
