@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VibePad</string>
+    <string name="device_admin_description">Allow VibePad to run as a dedicated kiosk after explicit device provisioning.</string>
+</resources>

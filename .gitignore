@@ -1,0 +1,16 @@
+# 构建产物
+.build/
+build/
+.gradle/
+*.apk
+*.aab
+
+# 本地产物与历史备份（不进仓）
+dist/
+backups/
+
+# IDE / 系统
+.idea/
+*.iml
+.DS_Store
+local.properties
