@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>WebPad Remote Control</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#d6e3ff",
+                        "secondary-container": "#48494c",
+                        "inverse-on-surface": "#303030",
+                        "tertiary-fixed-dim": "#c8c6c8",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#474649",
+                        "error": "#ffb4ab",
+                        "primary-container": "#3e90ff",
+                        "on-surface-variant": "#c0c6d6",
+                        "surface": "#131313",
+                        "inverse-surface": "#e2e2e2",
+                        "on-tertiary-fixed": "#1b1b1d",
+                        "on-secondary": "#303033",
+                        "on-secondary-fixed-variant": "#464649",
+                        "secondary-fixed": "#e3e2e5",
+                        "on-primary-fixed": "#001b3e",
+                        "surface-container-highest": "#353535",
+                        "surface-container": "#1f1f1f",
+                        "outline-variant": "#414754",
+                        "on-primary-container": "#002957",
+                        "background": "#131313",
+                        "outline": "#8b91a0",
+                        "on-tertiary": "#303032",
+                        "tertiary": "#c8c6c8",
+                        "tertiary-container": "#929092",
+                        "on-secondary-container": "#b9b8bb",
+                        "surface-tint": "#aac7ff",
+                        "surface-container-high": "#2a2a2a",
+                        "surface-container-lowest": "#0e0e0e",
+                        "tertiary-fixed": "#e4e2e4",
+                        "inverse-primary": "#005db8",
+                        "on-surface": "#e2e2e2",
+                        "on-error": "#690005",
+                        "primary": "#aac7ff",
+                        "on-tertiary-container": "#2a292c",
+                        "secondary": "#c7c6c9",
+                        "error-container": "#93000a",
+                        "primary-fixed-dim": "#aac7ff",
+                        "surface-bright": "#393939",
+                        "surface-variant": "#353535",
+                        "on-secondary-fixed": "#1b1b1e",
+                        "surface-container-low": "#1b1b1b",
+                        "secondary-fixed-dim": "#c7c6c9",
+                        "on-primary-fixed-variant": "#00468d",
+                        "on-background": "#e2e2e2",
+                        "surface-dim": "#131313",
+                        "on-primary": "#003064"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "12px",
+                        "stack-sm": "8px",
+                        "stack-lg": "24px",
+                        "gutter": "16px",
+                        "touch-target-min": "48px",
+                        "margin-page": "24px"
+                    },
+                    "fontFamily": {
+                        "mono-label": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "mono-label": ["13px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "headline-xl": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #131313;
+            color: #e2e2e2;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        .keycap {
+            background-color: #2C2C2E;
+            box-shadow: 
+                inset 0px 1px 0px rgba(255, 255, 255, 0.1),
+                inset 0px -2px 0px rgba(0, 0, 0, 0.25),
+                0px 2px 4px rgba(0, 0, 0, 0.4);
+            transition: all 0.05s ease-out;
+        }
+        
+        .keycap:active {
+            transform: translateY(2px);
+            box-shadow: 
+                inset 0px 1px 0px rgba(255, 255, 255, 0.05),
+                inset 0px -1px 0px rgba(0, 0, 0, 0.2),
+                0px 0px 0px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn-primary {
+            background-color: #3e90ff;
+            color: #002957;
+            box-shadow: 
+                inset 0px 1px 0px rgba(255, 255, 255, 0.2),
+                inset 0px -2px 0px rgba(0, 0, 0, 0.2);
+            transition: all 0.05s ease-out;
+        }
+        
+        .btn-primary:active {
+            transform: translateY(2px);
+            box-shadow: inset 0px 1px 0px rgba(255, 255, 255, 0.1);
+        }
+        
+        .quota-bar {
+            height: 6px;
+            border-radius: 3px;
+            background-color: #353535;
+            overflow: hidden;
+        }
+        
+        .quota-fill {
+            height: 100%;
+            background-color: #aac7ff;
+        }
+        
+        .quota-fill-full {
+            background-color: #c0c6d6;
+        }
+        
+        .trackpad {
+            background: linear-gradient(135deg, #1f1f1f 0%, #171717 100%);
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col font-body-md select-none">
+<!-- Top Status Bar -->
+<header class="h-[40px] w-full bg-surface border-b border-outline-variant flex items-center justify-between px-gutter flex-shrink-0 z-50">
+<!-- Left: Time, Connectivity, Settings -->
+<div class="flex items-center space-x-4">
+<span class="font-mono-label text-mono-label text-on-surface">14:20</span>
+<div class="flex items-center space-x-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">wifi</span>
+<span class="font-mono-label text-mono-label text-on-surface">85%</span>
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">battery_full</span>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors p-1">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+</button>
+</div>
+<!-- Middle: Quotas -->
+<div class="flex items-center space-x-6">
+<!-- Claude Group -->
+<div class="flex items-center space-x-4 bg-surface-container-high px-3 py-1 rounded">
+<span class="font-label-md text-label-md text-on-surface-variant mr-1">Claude</span>
+<div class="flex flex-col w-20">
+<div class="flex justify-between font-mono-label text-xs text-on-surface-variant mb-[2px]">
+<span>5 小时</span>
+</div>
+<div class="quota-bar w-full"><div class="quota-fill w-[80%]"></div></div>
+</div>
+<div class="flex flex-col w-20">
+<div class="flex justify-between font-mono-label text-xs text-on-surface-variant mb-[2px]">
+<span>7 天</span>
+</div>
+<div class="quota-bar w-full"><div class="quota-fill w-[40%]"></div></div>
+</div>
+<div class="flex flex-col w-20">
+<div class="flex justify-between font-mono-label text-xs text-on-surface-variant mb-[2px]">
+<span>Fable 5</span>
+</div>
+<div class="quota-bar w-full"><div class="quota-fill quota-fill-full w-full"></div></div>
+</div>
+</div>
+<!-- Codex Group -->
+<div class="flex items-center space-x-4 bg-surface-container-high px-3 py-1 rounded">
+<span class="font-label-md text-label-md text-on-surface-variant mr-1">Codex</span>
+<div class="flex flex-col w-20">
+<div class="flex justify-between font-mono-label text-xs text-on-surface-variant mb-[2px]">
+<span>5 小时</span>
+</div>
+<div class="quota-bar w-full"><div class="quota-fill w-[20%]"></div></div>
+</div>
+<div class="flex flex-col w-20">
+<div class="flex justify-between font-mono-label text-xs text-on-surface-variant mb-[2px]">
+<span>7 天</span>
+</div>
+<div class="quota-bar w-full"><div class="quota-fill w-[65%]"></div></div>
+</div>
+</div>
+</div>
+<!-- Right: Status -->
+<div class="flex items-center space-x-2">
+<div class="w-2 h-2 rounded-full bg-[#34C759]"></div>
+<span class="font-label-sm text-label-sm text-on-surface">输入正常</span>
+</div>
+</header>
+<!-- Main Body -->
+<main class="flex-1 flex flex-row overflow-hidden">
+<!-- Left Panel (Control Area) - 36% -->
+<div class="w-[36%] h-full border-r border-outline-variant bg-surface-container flex flex-col p-6"><!-- Top Section: Fixed Apps -->
+<div class="flex-shrink-0">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-label-md text-label-md text-on-surface-variant">常用 App</h2>
+<button class="font-label-sm text-label-sm text-primary hover:text-primary-fixed transition-colors">自定义</button>
+</div>
+<div class="grid grid-cols-3 gap-4">
+<button class="flex flex-col items-center justify-center h-20 bg-surface-container-high rounded-xl hover:bg-surface-container-highest transition-colors group">
+<span class="material-symbols-outlined text-[28px] text-[#4ea8de] mb-2 group-hover:scale-110 transition-transform">terminal</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Cursor</span>
+</button>
+<button class="flex flex-col items-center justify-center h-20 bg-surface-container-high rounded-xl hover:bg-surface-container-highest transition-colors group">
+<span class="material-symbols-outlined text-[28px] text-[#8e9aaf] mb-2 group-hover:scale-110 transition-transform">save_as</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Terminal</span>
+</button>
+<button class="flex flex-col items-center justify-center h-20 bg-surface-container-high rounded-xl hover:bg-surface-container-highest transition-colors group">
+<span class="material-symbols-outlined text-[28px] text-[#0077b6] mb-2 group-hover:scale-110 transition-transform" style="font-variation-settings: 'FILL' 1;">folder</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Finder</span>
+</button>
+<button class="flex flex-col items-center justify-center h-20 bg-surface-container-high rounded-xl hover:bg-surface-container-highest transition-colors group">
+<span class="material-symbols-outlined text-[28px] text-[#ffb703] mb-2 group-hover:scale-110 transition-transform">globe</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Chrome</span>
+</button>
+<button class="flex flex-col items-center justify-center h-20 bg-surface-container-high rounded-xl hover:bg-surface-container-highest transition-colors group">
+<span class="material-symbols-outlined text-[28px] text-[#2a9d8f] mb-2 group-hover:scale-110 transition-transform">code</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Codex</span>
+</button>
+<button class="flex flex-col items-center justify-center h-20 bg-surface-container-high border border-dashed border-outline-variant rounded-xl hover:bg-surface-container-highest transition-colors group">
+<span class="material-symbols-outlined text-[28px] text-on-surface-variant mb-2 group-hover:scale-110 transition-transform">add</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Add</span>
+</button>
+</div>
+</div>
+<!-- Middle Section: Flexible Spacer -->
+<div class="flex-1"></div>
+<!-- Bottom Section: Vibe Coding + Actions -->
+<div class="flex-shrink-0 flex flex-col space-y-6">
+<div>
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-label-md text-label-md text-on-surface-variant">Vibe Coding</h2>
+<button class="w-6 h-6 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+<div class="grid grid-cols-5 gap-3">
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex items-center justify-center">Esc</button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-[#ffb4ab] flex items-center justify-center">停止</button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex items-center justify-center">是 Y</button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex items-center justify-center"><span class="material-symbols-outlined">arrow_upward</span></button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex items-center justify-center">否 N</button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex items-center justify-center col-span-2">Space</button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex items-center justify-center"><span class="material-symbols-outlined">arrow_back</span></button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex items-center justify-center"><span class="material-symbols-outlined">arrow_downward</span></button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex items-center justify-center"><span class="material-symbols-outlined">arrow_forward</span></button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex flex-col items-center justify-center leading-tight">
+<span class="mb-[2px]">剪切</span>
+<span class="text-[10px] opacity-70">⌘X</span>
+</button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex flex-col items-center justify-center leading-tight">
+<span class="mb-[2px]">复制</span>
+<span class="text-[10px] opacity-70">⌘C</span>
+</button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex flex-col items-center justify-center leading-tight">
+<span class="mb-[2px]">粘贴</span>
+<span class="text-[10px] opacity-70">⌘V</span>
+</button>
+<button class="keycap h-16 rounded-lg font-mono-label text-mono-label text-on-surface flex items-center justify-center col-span-2 space-x-2">
+<span>删除</span>
+<span class="material-symbols-outlined text-[20px]">backspace</span>
+</button>
+</div>
+</div>
+<div class="flex space-x-4 h-24">
+<button class="w-2/3 btn-primary rounded-xl flex flex-col items-center justify-center group active:scale-95">
+<span class="material-symbols-outlined text-[32px] text-on-primary-container mb-1 group-hover:scale-105 transition-transform">mic</span>
+<span class="font-headline-lg text-headline-lg font-bold text-on-primary-container">唤醒 Typeless</span>
+</button>
+<button class="w-1/3 bg-surface-container-high rounded-xl border border-outline-variant hover:bg-surface-container-highest transition-colors flex flex-col items-center justify-center group">
+<span class="font-label-md text-label-md text-on-surface mb-1">发送</span>
+<span class="text-[10px] text-on-surface-variant opacity-80">短按 Enter · 长按 Shift+Enter</span>
+</button>
+</div>
+</div></div>
+<!-- Right Panel (Trackpad Area) - 64% -->
+<div class="w-[64%] h-full p-6 bg-background">
+<div class="w-full h-full rounded-2xl border border-outline-variant trackpad flex flex-col items-center justify-center relative overflow-hidden group">
+<!-- Subtle grid texture placeholder -->
+<div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: radial-gradient(circle, #ffffff 1px, transparent 1px); background-size: 20px 20px;"></div>
+<div class="text-center opacity-30 group-hover:opacity-50 transition-opacity duration-500">
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-2 tracking-widest">触控面板</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">单指移动 · 双指滚动 · 双指轻点右键</p>
+</div>
+<!-- Interactive touch visualization area (invisible, logical) -->
+<div class="absolute inset-0 z-10 cursor-crosshair" id="touch-surface"></div>
+</div>
+</div>
+</main>
+<script>
+        // Simple micro-interaction for trackpad area
+        const touchSurface = document.getElementById('touch-surface');
+        
+        touchSurface.addEventListener('pointerdown', (e) => {
+            const rect = touchSurface.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Create a ripple effect
+            const ripple = document.createElement('div');
+            ripple.className = 'absolute rounded-full pointer-events-none border border-primary/50';
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+            ripple.style.width = '0px';
+            ripple.style.height = '0px';
+            ripple.style.transform = 'translate(-50%, -50%)';
+            ripple.style.transition = 'all 0.3s cubic-bezier(0.1, 0.9, 0.2, 1)';
+            
+            touchSurface.parentElement.appendChild(ripple);
+            
+            // Trigger animation next frame
+            requestAnimationFrame(() => {
+                ripple.style.width = '60px';
+                ripple.style.height = '60px';
+                ripple.style.opacity = '0';
+            });
+            
+            // Cleanup
+            setTimeout(() => {
+                ripple.remove();
+            }, 300);
+        });
+    </script>
+</body></html>
