@@ -92,9 +92,10 @@ data class SkinPalette(
             icon = 0xFFC0C6D6.toInt(),
             accent = 0xFFAAC7FF.toInt(),
             accentSoft = 0xFF25334C.toInt(),
-            accentStrong = 0xFF3E90FF.toInt(),
-            accentPressed = 0xFF62A6FF.toInt(),
-            onAccent = 0xFF002957.toInt(),
+            // 麦克风主按钮改用 02 深空专业的蓝（老板指定）
+            accentStrong = 0xFFACC3ED.toInt(),
+            accentPressed = 0xFF8FAEE2.toInt(),
+            onAccent = 0xFF1C2941.toInt(),
             pad = 0xFF000000.toInt(),
             padOutline = 0xFF3D4551.toInt(),
             padOnline = 0xFF53B582.toInt(),

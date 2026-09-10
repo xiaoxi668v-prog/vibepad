@@ -3,6 +3,8 @@ package com.xiaoxi.vibepad.ui
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -237,6 +239,8 @@ class TouchBarStripView(
         fun applyPalette(palette: SkinPalette) {
             idleColor = palette.touchBar
             if (drawable == null) setBackgroundColor(idleColor)
+            // 浅色皮肤（05 双手操控）下把 Mac 回传的深色 Touch Bar 画面反色，融入浅色主题
+            colorFilter = if (palette.light) ColorMatrixColorFilter(INVERT_MATRIX) else null
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -300,6 +304,16 @@ class TouchBarStripView(
             private const val TOUCH_UP = 2
             private const val TOUCH_MOVE_INTERVAL_MS = 8L
             private const val NORMALIZED_MAX = 65_535f
+
+            /** RGB 反色、Alpha 不动。 */
+            private val INVERT_MATRIX = ColorMatrix(
+                floatArrayOf(
+                    -1f, 0f, 0f, 0f, 255f,
+                    0f, -1f, 0f, 0f, 255f,
+                    0f, 0f, -1f, 0f, 255f,
+                    0f, 0f, 0f, 1f, 0f,
+                )
+            )
         }
     }
 
