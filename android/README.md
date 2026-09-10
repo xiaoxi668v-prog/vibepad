@@ -16,6 +16,16 @@ keyboard, single-tap Typeless wake, short/long send behavior, persistent custom
 shortcuts, trusted Helper health, local usage quotas, and a controlled Mac app
 catalog/launcher.
 
+Three skins ship in the app and are switched in settings (or from the Mac
+helper): `classic` (01 经典黑, the shipped 0.4.1 layout), `graphite`
+(02 深空专业) and `titanium` (05 双手操控). Skins only change palette and
+layout: protocol, gestures, key semantics and the Typeless flow are shared.
+See `ui/Skin.kt`, `ui/VibePadView.kt` and `docs/HANDOFF.md` section 20.
+
+Skin, header mode, favourite apps, custom shortcuts and pointer/scroll
+sensitivity live in `ui/PadConfig.kt` and sync with the Mac helper over frames
+`0x60`/`0x61`/`0x62`; the higher `revision` wins.
+
 ## Build
 
 ```sh

@@ -4,7 +4,7 @@ import Foundation
 import Security
 
 enum HelperInfo {
-    static let version = "3.4.0"
+    static let version = "3.5.0"
 }
 
 enum PairingCrypto {
@@ -157,6 +157,7 @@ final class MenuBarController: NSObject {
     private let gate: PairingGate
     private let store: PairingStore
     private let inputStatus: () -> (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8)
+    private let openSettings: (() -> Void)?
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let menu = NSMenu()
     private let connItem = NSMenuItem(title: "平板：未连接", action: nil, keyEquivalent: "")
@@ -164,6 +165,7 @@ final class MenuBarController: NSObject {
     private let inputItem = NSMenuItem(title: "最近输入：暂无", action: nil, keyEquivalent: "")
     private let heldItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let versionItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+    private let settingsItem = NSMenuItem(title: "VibePad 设置…", action: #selector(openSettingsWindow), keyEquivalent: ",")
     private let pairingItem = NSMenuItem(title: "允许配对新平板（60 秒）", action: #selector(openPairing), keyEquivalent: "")
     private let countItem = NSMenuItem(title: "已配对设备：0", action: nil, keyEquivalent: "")
     private let pendingDeviceItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
@@ -181,15 +183,19 @@ final class MenuBarController: NSObject {
     private var timer: Timer?
 
     init(gate: PairingGate, store: PairingStore,
-         inputStatus: @escaping () -> (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) = { (nil, 0, 0) }) {
+         inputStatus: @escaping () -> (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) = { (nil, 0, 0) },
+         openSettings: (() -> Void)? = nil) {
         self.gate = gate
         self.store = store
         self.inputStatus = inputStatus
+        self.openSettings = openSettings
         super.init()
         Self.shared = self
         item.button?.image = disconnectedIcon
         item.button?.imagePosition = .imageOnly
         item.button?.toolTip = "VibePad Helper"
+        settingsItem.target = self
+        settingsItem.isHidden = openSettings == nil
         pairingItem.target = self
         allowItem.target = self
         rejectItem.target = self
@@ -202,6 +208,7 @@ final class MenuBarController: NSObject {
         menu.addItem(.separator())
         menu.addItem(countItem)
         menu.addItem(.separator())
+        menu.addItem(settingsItem)
         menu.addItem(pairingItem)
         menu.addItem(pendingDeviceItem)
         menu.addItem(allowItem)
@@ -215,6 +222,11 @@ final class MenuBarController: NSObject {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshMenu() }
         }
+    }
+
+    /// 打开菜单栏设置窗口：在 Mac 上直接配置平板皮肤与常用 App。
+    @objc private func openSettingsWindow() {
+        openSettings?()
     }
 
     @objc private func openPairing() {

@@ -55,3 +55,22 @@ codesign --force --deep --options runtime --timestamp=none \
 
 断线时 helper 会释放全部鼠标按键，避免残留拖拽状态。键盘 payload 使用 USB
 HID Keyboard/Keypad usage；helper 负责将其映射为 macOS virtual keycode。
+
+## 菜单栏设置窗口（3.5.0 起）
+
+菜单栏图标里新增「VibePad 设置…」，可以直接在 Mac 上配置平板界面，不必只在平板上改：
+
+- 界面皮肤：经典 / 深空专业 / 双手操控（对应 `designs/skins/` 的 01 / 02 / 05）；
+- 顶部区域：Mac Touch Bar 画面或本地额度栏；
+- 常用 App：3 × 3 下拉框，顺序即平板显示顺序，可留空；
+- 鼠标与滚动灵敏度。
+
+配置存放在 `~/Library/Application Support/VibePad/pad-config.json`，通过
+`0x60 CONFIG_REQUEST` / `0x61 CONFIG` / `0x62 CONFIG_UPDATE` 三个帧与平板双向同步，
+`revision` 大的一方胜出。字段与冲突规则见 `docs/HANDOFF.md` 第 20 节。
+
+心跳回执 `0x21 PONG` 的健康 JSON 增加 `frontmostApp`（当前前台 App 的 bundle id），
+平板用它高亮常用 App。
+
+> 上面的 “Wire protocol v1” 一节是历史记录：当前实际协议为 v2（HMAC 配对与鉴权、
+> Touch Bar 画面、音频、配置同步），以 `docs/HANDOFF.md` 与源码为准。

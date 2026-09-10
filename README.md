@@ -16,6 +16,13 @@ dist/        发布产物（本地产出，不进 git）
 backups/     安装前自动备份（本地产出，不进 git）
 ```
 
+## 皮肤与配置
+
+平板端内置三套皮肤（经典 / 深空专业 / 双手操控），在平板设置弹层里切换。
+界面皮肤、顶部区域（Mac Touch Bar 画面或额度栏）、常用 App 和触控灵敏度
+也可以在 Mac 菜单栏的「VibePad 设置…」里配置，两端通过 `0x60/0x61/0x62`
+三个帧双向同步，Mac 侧存在 `~/Library/Application Support/VibePad/pad-config.json`。
+
 ## 构建与发布
 
 ```bash

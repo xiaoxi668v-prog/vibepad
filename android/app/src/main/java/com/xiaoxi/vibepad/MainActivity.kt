@@ -7,8 +7,12 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.Button
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
@@ -21,11 +25,16 @@ import com.xiaoxi.vibepad.input.RemoteDataListener
 import com.xiaoxi.vibepad.input.TouchBarFrame
 import com.xiaoxi.vibepad.input.UsageSnapshot
 import com.xiaoxi.vibepad.input.WifiInputSink
+import com.xiaoxi.vibepad.ui.HeaderMode
 import com.xiaoxi.vibepad.ui.NoOpInputSink
+import com.xiaoxi.vibepad.ui.PadConfig
+import com.xiaoxi.vibepad.ui.PadConfigStore
+import com.xiaoxi.vibepad.ui.Skin
 import com.xiaoxi.vibepad.ui.VibePadView
 import com.xiaoxi.vibepad.system.KioskController
 
 class MainActivity : Activity() {
+    private val configStore: PadConfigStore by lazy { PadConfigStore.get(this) }
     private var inputSink: InputSink = NoOpInputSink
     private var vibePadView: VibePadView? = null
     private var wifiSink: WifiInputSink? = null
@@ -38,6 +47,13 @@ class MainActivity : Activity() {
     private var typelessStartTapInFlight = false
     private var typelessStopRequested = false
 
+    /** 平板本地改了配置就推给 Mac；Mac 推来的配置由 PadConfigStore 落盘并重建界面。 */
+    private val configListener: (PadConfig, PadConfigStore.Origin) -> Unit = { config, origin ->
+        if (origin == PadConfigStore.Origin.LOCAL) {
+            wifiSink?.sendPadConfig(config.toJson().toString())
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         kioskController = KioskController(this).also { it.start() }
@@ -49,6 +65,8 @@ class MainActivity : Activity() {
             onMicrophonePressStart = ::beginMicrophonePress,
             onMicrophonePressEnd = ::endMicrophonePress,
         ).also(::setContentView)
+
+        configStore.addListener(configListener)
 
         val wifi = WifiInputSink(
             context = this,
@@ -76,6 +94,11 @@ class MainActivity : Activity() {
 
                 override fun onAppCatalogFinished() = runOnUiThread {
                     vibePadView?.finishAppCatalog()
+                }
+
+                override fun onPadConfig(payload: String) = runOnUiThread {
+                    configStore.applyRemote(payload)
+                    Unit
                 }
 
                 override fun onPairingCode(code: String) = runOnUiThread {
@@ -126,9 +149,14 @@ class MainActivity : Activity() {
             vibePadView?.refreshConnectionState()
             if (state.status == WifiInputSink.Status.CONNECTED) {
                 wifiSink?.requestApps()
+                // 握手：把本地配置发给 Mac，由 revision 决定谁覆盖谁。
+                wifiSink?.requestPadConfig(configStore.encodeCurrent())
                 Toast.makeText(this, "已切换到 5GHz Wi-Fi", Toast.LENGTH_SHORT).show()
-            } else if (microphoneStreamer?.isRecording == true || typelessSessionStarted) {
-                abortMicrophonePress(MicrophoneStreamer.STOP_REASON_DISCONNECTED)
+            } else {
+                vibePadView?.clearModifierLocks()
+                if (microphoneStreamer?.isRecording == true || typelessSessionStarted) {
+                    abortMicrophonePress(MicrophoneStreamer.STOP_REASON_DISCONNECTED)
+                }
             }
         }
     }
@@ -242,7 +270,7 @@ class MainActivity : Activity() {
     private fun showVibePadSettings() {
         val density = resources.displayMetrics.density
         fun dp(value: Int) = (value * density + 0.5f).toInt()
-        val prefs = getSharedPreferences("vibepad_ui", MODE_PRIVATE)
+        val config = configStore.current()
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(4), dp(24), dp(8))
@@ -259,23 +287,39 @@ class MainActivity : Activity() {
                 isAllCaps = false
                 text = if (wifiSink?.isPaired == true) "重新配对这台平板" else "配对这台平板"
                 setOnClickListener {
-                    showPairingInstructions("请先点 Mac 菜单栏的“WP”，选择“允许配对新平板（60 秒）”，然后点下方继续。")
+                    showPairingInstructions("请先点 Mac 菜单栏的 VibePad 图标，选择“允许配对新平板（60 秒）”，然后点下方继续。")
                 }
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(42)).apply {
+                bottomMargin = dp(4)
+            })
+            addView(skinControl(config.skin))
+            addView(headerModeControl(config.headerMode))
+            addView(Button(this@MainActivity).apply {
+                isAllCaps = false
+                text = "选择常用 App"
+                setOnClickListener { vibePadView?.openAppPicker() }
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(42)).apply {
+                topMargin = dp(4)
                 bottomMargin = dp(4)
             })
             addView(sensitivityControl(
                 label = "鼠标灵敏度",
                 hint = "控制单指移动光标的速度",
-                initial = prefs.getFloat(PREF_MOUSE_SENSITIVITY, 1f),
-                maximum = 2f,
-            ) { value -> prefs.edit().putFloat(PREF_MOUSE_SENSITIVITY, value).apply() })
+                initial = config.mouseSensitivity,
+                maximum = PadConfig.MOUSE_MAX,
+            ) { value -> configStore.update { it.copy(mouseSensitivity = value) } })
             addView(sensitivityControl(
                 label = "滚动灵敏度",
                 hint = "控制双指自然滚动和抬手惯性的速度",
-                initial = prefs.getFloat(PREF_TRACKPAD_SENSITIVITY, 1f),
-                maximum = 4f,
-            ) { value -> prefs.edit().putFloat(PREF_TRACKPAD_SENSITIVITY, value).apply() })
+                initial = config.scrollSensitivity,
+                maximum = PadConfig.SCROLL_MAX,
+            ) { value -> configStore.update { it.copy(scrollSensitivity = value) } })
+            addView(TextView(this@MainActivity).apply {
+                text = "以上设置会同步到 Mac Helper，也可以在 Mac 菜单栏的「VibePad 设置…」里改。"
+                textSize = 11f
+                alpha = 0.65f
+                setPadding(0, dp(2), 0, dp(6))
+            })
             addView(TextView(this@MainActivity).apply {
                 text = "触控操作说明"
                 textSize = 15f
@@ -295,7 +339,7 @@ class MainActivity : Activity() {
         }
         val dialog = AlertDialog.Builder(this)
             .setTitle("VibePad 设置")
-            .setView(content)
+            .setView(ScrollView(this).apply { addView(content) })
             .setPositiveButton("完成", null)
             .setNegativeButton("退出 VibePad") { _, _ -> showExitConfirmation() }
             .create()
@@ -303,6 +347,66 @@ class MainActivity : Activity() {
             dialog.window?.decorView?.systemUiVisibility = DIALOG_IMMERSIVE_FLAGS
         }
         dialog.show()
+    }
+
+    /** 皮肤切换：三套皮肤共用同一套协议与手势，只改布局与配色。 */
+    private fun skinControl(current: Skin): View {
+        val density = resources.displayMetrics.density
+        fun dp(value: Int) = (value * density + 0.5f).toInt()
+        val summary = TextView(this).apply {
+            text = current.summary
+            textSize = 11f
+            alpha = 0.65f
+        }
+        val group = RadioGroup(this).apply {
+            orientation = RadioGroup.HORIZONTAL
+            Skin.entries.forEachIndexed { index, skin ->
+                addView(RadioButton(this@MainActivity).apply {
+                    id = SKIN_BUTTON_BASE_ID + index
+                    text = skin.displayName
+                    textSize = 14f
+                    isChecked = skin == current
+                }, RadioGroup.LayoutParams(0, RadioGroup.LayoutParams.WRAP_CONTENT, 1f))
+            }
+            setOnCheckedChangeListener { _, checkedId ->
+                val skin = Skin.entries.getOrNull(checkedId - SKIN_BUTTON_BASE_ID) ?: return@setOnCheckedChangeListener
+                summary.text = skin.summary
+                configStore.update { it.copy(skin = skin) }
+            }
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(6), 0, dp(2))
+            addView(TextView(this@MainActivity).apply {
+                text = "界面皮肤"
+                textSize = 15f
+            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(24)))
+            addView(group, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+            addView(summary, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ))
+        }
+    }
+
+    /** 顶部区域：Mac 真实 Touch Bar 画面，或本地额度栏。 */
+    private fun headerModeControl(current: HeaderMode): View {
+        val density = resources.displayMetrics.density
+        fun dp(value: Int) = (value * density + 0.5f).toInt()
+        return CheckBox(this).apply {
+            text = "顶部显示 Mac Touch Bar（关闭改为显示额度栏）"
+            textSize = 13f
+            isChecked = current == HeaderMode.TOUCH_BAR
+            setPadding(0, dp(4), 0, dp(4))
+            setOnCheckedChangeListener { _, checked ->
+                configStore.update {
+                    it.copy(headerMode = if (checked) HeaderMode.TOUCH_BAR else HeaderMode.QUOTA)
+                }
+            }
+        }
     }
 
     private fun showPairingInstructions(message: String) {
@@ -376,14 +480,15 @@ class MainActivity : Activity() {
                 max = ((maximum - 0.5f) * 100).toInt()
                 progress = ((initial.coerceIn(0.5f, maximum) - 0.5f) * 100).toInt()
                 valueText.text = "%.1fx".format(0.5f + progress / 100f)
+                // 拖动过程只更新读数，松手才写配置：每次写入都会 revision + 1 并推给 Mac。
                 setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                        val value = 0.5f + progress / 100f
-                        valueText.text = "%.1fx".format(value)
-                        if (fromUser) onChanged(value)
+                        valueText.text = "%.1fx".format(0.5f + progress / 100f)
                     }
                     override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-                    override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                        onChanged(0.5f + (seekBar?.progress ?: 0) / 100f)
+                    }
                 })
             }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(30)))
         }
@@ -395,6 +500,7 @@ class MainActivity : Activity() {
             .setMessage("将中断触控和键盘连接，并恢复安卓系统栏。")
             .setPositiveButton("确认退出") { _, _ ->
                 microphonePressHeld = false
+                vibePadView?.clearModifierLocks()
                 stopMicrophoneAndTypeless(MicrophoneStreamer.STOP_REASON_LIFECYCLE)
                 inputSink.releaseAll()
                 kioskController?.exitLockTask()
@@ -415,6 +521,7 @@ class MainActivity : Activity() {
 
     override fun onPause() {
         microphonePressHeld = false
+        vibePadView?.clearModifierLocks()
         if (microphoneStreamer?.isRecording == true || typelessSessionStarted) {
             stopMicrophoneAndTypeless(MicrophoneStreamer.STOP_REASON_LIFECYCLE)
         }
@@ -423,6 +530,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        configStore.removeListener(configListener)
         microphoneStreamer?.stop(MicrophoneStreamer.STOP_REASON_LIFECYCLE)
         inputSink.releaseAll()
         wifiSink?.close()
@@ -432,9 +540,8 @@ class MainActivity : Activity() {
     }
 
     private companion object {
-        const val PREF_MOUSE_SENSITIVITY = "mouse_sensitivity"
-        const val PREF_TRACKPAD_SENSITIVITY = "trackpad_sensitivity"
         const val REQUEST_RECORD_AUDIO = 4101
+        const val SKIN_BUTTON_BASE_ID = 0x5B1000
         const val TYPELESS_START_DELAY_MS = 120L
         const val TYPELESS_TAP_MS = 90L
         const val DIALOG_IMMERSIVE_FLAGS =
