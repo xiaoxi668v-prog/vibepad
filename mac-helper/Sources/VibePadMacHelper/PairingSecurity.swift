@@ -104,7 +104,8 @@ final class PairingStore {
         return attributes[kSecAttrDescription as String] as? String
     }
 
-    func pairedDeviceCount() -> Int {        let query: [String: Any] = [
+    func pairedDeviceCount() -> Int {
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecReturnAttributes as String: true,
