@@ -84,14 +84,31 @@ private final class InputInjector {
     private var moveFlushGeneration: UInt64 = 0
     private var scheduledMoveFlush: UInt64?
     private var lastInputAt: Date?
+    // Mirror of (lastInputAt, buttons, heldModifiers) for readers on other threads.
+    // The menu bar polls this from the main thread; it must never block on `queue`,
+    // because the network queue itself blocks on the main thread when the Touch Bar
+    // bridge starts or stops (dispatch_sync to main). Blocking both ways deadlocks.
+    private let statusLock = NSLock()
+    private var statusMirror: (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) = (nil, 0, 0)
 
     init(queue: DispatchQueue) {
         self.queue = queue
     }
 
+    private func markInput() {
+        lastInputAt = Date()
+        publishStatus()
+    }
+
+    private func publishStatus() {
+        statusLock.lock()
+        statusMirror = (lastInputAt, buttons, heldModifiers)
+        statusLock.unlock()
+    }
+
     func move(dx: Int16, dy: Int16) {
         dispatchPrecondition(condition: .onQueue(queue))
-        lastInputAt = Date()
+        markInput()
         pendingMoveX = Self.clampedMoveSum(pendingMoveX, Int64(dx))
         pendingMoveY = Self.clampedMoveSum(pendingMoveY, Int64(dy))
         guard scheduledMoveFlush == nil else { return }
@@ -139,7 +156,7 @@ private final class InputInjector {
     }
 
     func setButton(mask: UInt8, pressed: Bool) {
-        lastInputAt = Date()
+        markInput()
         flushPendingMove()
         let relevant = mask & 0x07
         let next = pressed ? buttons | relevant : buttons & ~relevant
@@ -148,10 +165,11 @@ private final class InputInjector {
         if changed & 2 != 0 { postButton(.right, down: next & 2 != 0) }
         if changed & 4 != 0 { postButton(.center, down: next & 4 != 0) }
         buttons = next
+        publishStatus()
     }
 
     func scroll(vertical: Int16, horizontal: Int16) {
-        lastInputAt = Date()
+        markInput()
         // A two-finger gesture often begins immediately after a pointer move. WindowServer
         // may not have consumed that final move yet, so a location-less synthetic wheel
         // event can be routed to the focused window instead of the window under the cursor.
@@ -173,7 +191,7 @@ private final class InputInjector {
     }
 
     func gesture(_ value: UInt8) {
-        lastInputAt = Date()
+        markInput()
         flushPendingMove()
         switch value {
         case 1: postShortcut(keyCode: 126, flags: .maskControl) // Mission Control
@@ -200,7 +218,7 @@ private final class InputInjector {
     }
 
     func key(hidUsage: UInt16, modifierByte: UInt8, pressed: Bool) {
-        lastInputAt = Date()
+        markInput()
         flushPendingMove()
         // A USB boot-keyboard report represents modifier-only input with usage 0.
         // Modifier usages 0xe0...0xe7 are accepted as well for protocol clients
@@ -249,9 +267,11 @@ private final class InputInjector {
         return (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
     }
 
-    /// 供菜单栏状态面板使用；允许从其他线程调用。
+    /// 供菜单栏状态面板使用；允许从其他线程调用，且不会阻塞在 `queue` 上。
     func inputStatusSnapshot() -> (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) {
-        queue.sync { (lastInputAt, buttons, heldModifiers) }
+        statusLock.lock()
+        defer { statusLock.unlock() }
+        return statusMirror
     }
 
     private func updateModifiers(mask: UInt8, pressed: Bool) {
@@ -269,6 +289,7 @@ private final class InputInjector {
             event.flags = Self.eventFlags(from: heldModifiers)
             event.post(tap: .cghidEventTap)
         }
+        publishStatus()
     }
 
     private func postButton(_ button: CGMouseButton, down: Bool) {
@@ -916,7 +937,7 @@ private final class VibePadServer {
         self.pairingStore = pairingStore
     }
 
-    /// 供菜单栏状态面板使用；线程安全（InputInjector 内部 queue.sync）。
+    /// 供菜单栏状态面板使用；线程安全，且不会阻塞网络队列。
     func inputStatusSnapshot() -> (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) {
         injector.inputStatusSnapshot()
     }

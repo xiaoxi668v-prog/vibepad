@@ -487,6 +487,18 @@ class VibePadView(
             orientation = VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(8))
         }
+        val dialog = AlertDialog.Builder(context)
+            .setTitle("自定义快捷键")
+            .setView(ScrollView(context).apply { addView(panel) })
+            .setPositiveButton("添加") { _, _ -> showShortcutEditor(null) }
+            .setNegativeButton("完成", null)
+            .create()
+        // Reorder/delete rebuild the list by reopening the dialog; dismiss the old one
+        // first so dialogs do not stack up behind each other.
+        fun reopen() {
+            dialog.dismiss()
+            showShortcutManager()
+        }
         customShortcuts.forEachIndexed { index, shortcut ->
             panel.addView(LinearLayout(context).apply {
                 gravity = Gravity.CENTER_VERTICAL
@@ -506,19 +518,25 @@ class VibePadView(
                                     val item = customShortcuts.removeAt(index)
                                     customShortcuts.add(index - 1, item)
                                     saveShortcuts()
-                                    showShortcutManager()
+                                    renderCustomShortcuts()
+                                    reopen()
                                 }
                                 "↓" -> if (index < customShortcuts.lastIndex) {
                                     val item = customShortcuts.removeAt(index)
                                     customShortcuts.add(index + 1, item)
                                     saveShortcuts()
-                                    showShortcutManager()
+                                    renderCustomShortcuts()
+                                    reopen()
                                 }
-                                "编辑" -> showShortcutEditor(index)
+                                "编辑" -> {
+                                    dialog.dismiss()
+                                    showShortcutEditor(index)
+                                }
                                 "删除" -> {
                                     customShortcuts.removeAt(index)
                                     saveShortcuts()
                                     renderCustomShortcuts()
+                                    reopen()
                                 }
                             }
                         }
@@ -526,12 +544,7 @@ class VibePadView(
                 }
             }, LayoutParams(MATCH_PARENT, dp(52)))
         }
-        AlertDialog.Builder(context)
-            .setTitle("自定义快捷键")
-            .setView(ScrollView(context).apply { addView(panel) })
-            .setPositiveButton("添加") { _, _ -> showShortcutEditor(null) }
-            .setNegativeButton("完成", null)
-            .show()
+        dialog.show()
     }
 
     private fun showShortcutEditor(index: Int?) {
@@ -549,10 +562,12 @@ class VibePadView(
             adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, keys.map { it.first })
             setSelection(keys.indexOfFirst { it.second == current?.usage }.coerceAtLeast(0))
         }
-        val command = CheckBox(context).apply { text = "Command ⌘"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_GUI) != 0 }
-        val control = CheckBox(context).apply { text = "Control ⌃"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_CONTROL) != 0 }
-        val shift = CheckBox(context).apply { text = "Shift ⇧"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_SHIFT) != 0 }
-        val option = CheckBox(context).apply { text = "Option ⌥"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_ALT) != 0 }
+        // A new shortcut has no current modifiers; `null != 0` would tick every box.
+        val currentModifiers = current?.modifiers ?: 0
+        val command = CheckBox(context).apply { text = "Command ⌘"; isChecked = currentModifiers and HidModifiers.LEFT_GUI != 0 }
+        val control = CheckBox(context).apply { text = "Control ⌃"; isChecked = currentModifiers and HidModifiers.LEFT_CONTROL != 0 }
+        val shift = CheckBox(context).apply { text = "Shift ⇧"; isChecked = currentModifiers and HidModifiers.LEFT_SHIFT != 0 }
+        val option = CheckBox(context).apply { text = "Option ⌥"; isChecked = currentModifiers and HidModifiers.LEFT_ALT != 0 }
         panel.addView(label)
         panel.addView(spinner)
         panel.addView(command)
