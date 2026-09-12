@@ -19,6 +19,7 @@ import java.net.Socket
 import java.security.SecureRandom
 import java.util.ArrayDeque
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -82,6 +83,10 @@ class WifiInputSink(
     @Volatile private var resolving = false
     @Volatile private var serverNonce: ByteArray? = null
     @Volatile private var touchBarSubscribed = false
+    // Set when the Mac answers our authentication with PAIRING_REQUIRED (for example
+    // after "清除所有配对"). We then stop retrying the stale key on every reconnect and
+    // ask the user to pair again instead of toasting a raw error code every 90 s.
+    @Volatile private var secretRejectedByMac = false
     private var authClientNonce: ByteArray? = null
     private var pairingExchange: PairingExchange? = null
     private var touchBarFrameAssembly: TouchBarFrameAssembly? = null
@@ -96,7 +101,8 @@ class WifiInputSink(
     private var highPerformanceLock: WifiManager.WifiLock? = null
 
     override val isConnected: Boolean get() = connected && !closed
-    val isPaired: Boolean get() = pairingStore.hasSecret
+    /** True only while the stored pairing secret is still accepted by the Mac. */
+    val isPaired: Boolean get() = pairingStore.hasSecret && !secretRejectedByMac
 
     private val discoveryListener = object : NsdManager.DiscoveryListener {
         override fun onDiscoveryStarted(serviceType: String) = publish(Status.DISCOVERING, "正在查找 Mac")
@@ -309,8 +315,10 @@ class WifiInputSink(
 
     override fun close() {
         if (closed) return
-        releaseAll()
-        io.execute { closeSocket() }
+        // Mark closed first so the reader thread and any late callbacks stop scheduling
+        // work. The socket is closed synchronously here: submitting it to `io` right
+        // before shutdownNow() would usually cancel it while the drain loop was still
+        // busy, leaving the socket (and the Mac session) open until process death.
         closed = true
         if (discoveryStarted) {
             try { nsd.stopServiceDiscovery(discoveryListener) } catch (_: RuntimeException) { }
@@ -319,6 +327,9 @@ class WifiInputSink(
         multicastLock = null
         synchronized(queueLock) { queue.clear() }
         io.shutdownNow()
+        // The Mac helper releases every held button and modifier when the connection
+        // drops, so closing the socket is the reliable way to send "release all".
+        synchronized(stateLock) { closeSocket() }
         publish(Status.CLOSED)
     }
 
@@ -342,7 +353,10 @@ class WifiInputSink(
     }
 
     private fun scheduleDiscoveryRestart() {
-        if (!closed) io.schedule({ startDiscovery() }, RECONNECT_SECONDS, TimeUnit.SECONDS)
+        if (closed) return
+        try {
+            io.schedule({ startDiscovery() }, RECONNECT_SECONDS, TimeUnit.SECONDS)
+        } catch (_: RejectedExecutionException) { }
     }
 
     private fun connect(endpoint: Endpoint) {
@@ -424,8 +438,11 @@ class WifiInputSink(
     private fun handleServerChallenge(payload: ByteArray) {
         if (payload.size != NONCE_BYTES) throw EOFException("invalid server challenge")
         serverNonce = payload.copyOf()
-        if (pairingStore.hasSecret) sendAuthentication()
-        else publish(Status.PAIRING_REQUIRED, "需要与这台 Mac 配对")
+        when {
+            secretRejectedByMac -> publish(Status.PAIRING_REQUIRED, "Mac 已不再认识这台平板，请重新配对")
+            pairingStore.hasSecret -> sendAuthentication()
+            else -> publish(Status.PAIRING_REQUIRED, "需要与这台 Mac 配对")
+        }
     }
 
     private fun sendAuthentication() {
@@ -459,15 +476,28 @@ class WifiInputSink(
             ?: throw EOFException("invalid pairing proof")
         pairingStore.saveSecret(secret)
         pairingExchange = null
+        secretRejectedByMac = false
         remoteDataListener.onPairingMessage("配对成功，已建立加密身份", true)
         completeAuthentication()
     }
 
     private fun handlePairFailure(payload: ByteArray, fallback: String) {
         pairingExchange = null
-        val message = payload.toString(Charsets.UTF_8).takeIf(String::isNotBlank) ?: fallback
+        val code = payload.toString(Charsets.UTF_8).trim()
+        if (code == CODE_PAIRING_REQUIRED) secretRejectedByMac = true
+        val message = pairingFailureMessage(code, fallback)
         publish(Status.PAIRING_REQUIRED, message)
         remoteDataListener.onPairingMessage(message)
+    }
+
+    /** The helper sends short machine-readable codes; never show them verbatim. */
+    private fun pairingFailureMessage(code: String, fallback: String): String = when (code) {
+        "" -> fallback
+        CODE_PAIRING_REQUIRED -> "Mac 已不再认识这台平板，请在设置页重新配对"
+        "INVALID_REQUEST" -> "配对请求无效，请重试"
+        "PAIRING_REJECTED" -> "Mac 拒绝了本次配对"
+        "KEY_AGREEMENT_FAILED" -> "密钥协商失败，请重试"
+        else -> if (code.all { it.isUpperCase() || it == '_' }) fallback else code
     }
 
     private fun completeAuthentication() {
@@ -482,14 +512,17 @@ class WifiInputSink(
     }
 
     private fun sendProtocolEvent(event: Event) {
-        io.execute {
-            try {
-                if (transportConnected) writeFrame(event)
-            } catch (error: Exception) {
-                Log.w(TAG, "Secure protocol send failed", error)
-                socket?.let(::handleDisconnect)
+        if (closed) return
+        try {
+            io.execute {
+                try {
+                    if (transportConnected) writeFrame(event)
+                } catch (error: Exception) {
+                    Log.w(TAG, "Secure protocol send failed", error)
+                    socket?.let(::handleDisconnect)
+                }
             }
-        }
+        } catch (_: RejectedExecutionException) { }
     }
 
     private fun submitAudioWrite(event: Event) {
@@ -695,9 +728,6 @@ class WifiInputSink(
             height in 1..MAX_TOUCH_BAR_DIMENSION &&
             codec == TOUCH_BAR_CODEC_PNG
 
-    private fun JSONObject.optIntOrNull(key: String): Int? =
-        if (!has(key) || isNull(key)) null else optInt(key).coerceIn(0, 100)
-
     private fun JSONObject.optLongOrNull(key: String): Long? =
         if (!has(key) || isNull(key)) null else optLong(key)
 
@@ -758,9 +788,15 @@ class WifiInputSink(
             closeSocket()
         }
         synchronized(queueLock) { queue.clear() }
+        if (closed) return
         publish(Status.DISCONNECTED, "Wi-Fi 已断开，正在重连")
         audioDisconnectListener()
-        lastEndpoint?.let { endpoint -> io.schedule({ connect(endpoint) }, RECONNECT_SECONDS, TimeUnit.SECONDS) }
+        val endpoint = lastEndpoint ?: return
+        try {
+            io.schedule({ connect(endpoint) }, RECONNECT_SECONDS, TimeUnit.SECONDS)
+        } catch (_: RejectedExecutionException) {
+            // close() raced with the reader thread; nothing left to reconnect.
+        }
     }
 
     private fun closeSocket() {
@@ -886,5 +922,6 @@ class WifiInputSink(
         private const val RTT_LOG_SAMPLE_COUNT = 20
         private const val NONCE_BYTES = 32
         private const val HMAC_BYTES = 32
+        private const val CODE_PAIRING_REQUIRED = "PAIRING_REQUIRED"
     }
 }

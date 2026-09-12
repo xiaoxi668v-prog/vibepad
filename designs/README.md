@@ -6,7 +6,7 @@ VibePad 安卓平板端的三套 UI 皮肤。三套共用同一套连接协议�
 
 | 皮肤 | 目录 | 来源 | 特点 |
 |---|---|---|---|
-| 01 经典黑 | `skins/01-classic-dark/` | 2026-07-23 Stitch 原型，现行 App 已实现版本 | 纯黑背景、左控右触、五组额度栏 |
+| 01 经典黑 | `skins/01-classic-dark/` | 2026-07-23 Stitch 原型，现行 App 已实现版本 | 纯黑背景、左控右触（原型中的五组额度栏已从 App 移除，顶栏改为 Touch Bar 画面） |
 | 02 深空专业 Graphite Pro | `skins/02-graphite-pro/` | 2026-09-10 Orbit 交付包 | 深空灰分层、左触控右快捷键、底部 App Dock |
 | 05 双手操控 Titanium Duo | `skins/05-titanium-duo/` | 2026-09-10 Orbit 交付包 | 暖钛浅色、中央触控、左右拇指分工 |
 
