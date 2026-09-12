@@ -2,7 +2,7 @@ package com.xiaoxi.vibepad.ui
 
 import com.xiaoxi.vibepad.input.InputSink
 
-/** Safe placeholder until Bluetooth HID or a fallback transport is attached. */
+/** Safe placeholder used until the Wi-Fi transport is attached. */
 object NoOpInputSink : InputSink {
     override val isConnected = false
     override fun move(dx: Int, dy: Int) = Unit

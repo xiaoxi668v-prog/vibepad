@@ -754,10 +754,12 @@ class VibePadView(
             adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, keys.map { it.first })
             setSelection(keys.indexOfFirst { it.second == current?.usage }.coerceAtLeast(0))
         }
-        val command = CheckBox(context).apply { text = "Command ⌘"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_GUI) != 0 }
-        val control = CheckBox(context).apply { text = "Control ⌃"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_CONTROL) != 0 }
-        val shift = CheckBox(context).apply { text = "Shift ⇧"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_SHIFT) != 0 }
-        val option = CheckBox(context).apply { text = "Option ⌥"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_ALT) != 0 }
+        // A new shortcut has no current modifiers; `null != 0` would tick every box.
+        val currentModifiers = current?.modifiers ?: 0
+        val command = CheckBox(context).apply { text = "Command ⌘"; isChecked = currentModifiers and HidModifiers.LEFT_GUI != 0 }
+        val control = CheckBox(context).apply { text = "Control ⌃"; isChecked = currentModifiers and HidModifiers.LEFT_CONTROL != 0 }
+        val shift = CheckBox(context).apply { text = "Shift ⇧"; isChecked = currentModifiers and HidModifiers.LEFT_SHIFT != 0 }
+        val option = CheckBox(context).apply { text = "Option ⌥"; isChecked = currentModifiers and HidModifiers.LEFT_ALT != 0 }
         panel.addView(label)
         panel.addView(spinner)
         panel.addView(command)
