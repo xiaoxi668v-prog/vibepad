@@ -1,5 +1,11 @@
 # VibePad 项目交接文档
 
+> 本文是开发过程中的交接记录，保留了历史版本、SHA-256 与验收步骤，供理解设计取舍。
+> 其中的家目录、设备型号、IP 与 SSID 已替换为占位符；当前构建方式以根目录
+> README 与 `scripts/release-vibepad.sh` 为准。
+> 开源版已删除早期蓝牙 HID 传输、Device Owner/lock-task 配置和顶栏 Claude/Codex
+> 额度栏（含 Helper 读取本机 8088 端口的逻辑），本文涉及这些内容的章节仅为历史记录。
+
 > **2026-09-10 改名公告**：项目由 WebPad 改名为 VibePad，源码从
 > `~/Downloads/codex/` 迁至 `~/vibepad/`（android/、mac-helper/、scripts/、docs/）。
 > Bundle ID `com.xiaoxi.vibepad.helper`、Android 包名 `com.xiaoxi.vibepad`、
@@ -46,8 +52,8 @@ requirement 会绑定每次构建产生的新 CDHash，因此每次替换二进�
 当前已经改用这台 Mac 现有的稳定签名身份：
 
 ```text
-Apple Development: shishuaiok@sina.cn (347H32TQSD)
-TeamIdentifier: HB29UXHX7V
+Apple Development: you@example.com (TEAMID1234)
+TeamIdentifier: <你的 Team ID>
 Bundle ID: com.xiaoxi.vibepad.helper
 ```
 
@@ -55,8 +61,8 @@ Bundle ID: com.xiaoxi.vibepad.helper
 
 ```bash
 codesign --force --deep --options runtime --timestamp=none \
-  --sign "Apple Development: shishuaiok@sina.cn (347H32TQSD)" \
-  "/Users/shishuai/Applications/VibePad Helper.app"
+  --sign "Apple Development: you@example.com (TEAMID1234)" \
+  "$HOME/Applications/VibePad Helper.app"
 ```
 
 绝对不要再执行：
@@ -69,10 +75,10 @@ codesign --sign - ...
 
 ```bash
 codesign --verify --deep --strict --verbose=2 \
-  "/Users/shishuai/Applications/VibePad Helper.app"
+  "$HOME/Applications/VibePad Helper.app"
 
 codesign -dvvv -r- \
-  "/Users/shishuai/Applications/VibePad Helper.app"
+  "$HOME/Applications/VibePad Helper.app"
 ```
 
 正确的 designated requirement 应包含固定 Bundle ID、`anchor apple generic` 和
@@ -92,7 +98,7 @@ macOS 辅助功能路径：
 如果签名身份发生变化，可能需要移除旧条目，再重新添加：
 
 ```text
-/Users/shishuai/Applications/VibePad Helper.app
+~/Applications/VibePad Helper.app
 ```
 
 正常的小版本更新在使用同一稳定签名身份时，不应再反复丢失授权。
@@ -112,16 +118,16 @@ ADB 的 `input swipe` 可以验证安卓 UI 到 Mac 的代码通路，但不能�
 
 ### Android
 
-- 工程：`/Users/shishuai/vibepad/android`
+- 工程：`~/vibepad/android`
 - 包名：`com.xiaoxi.vibepad`
 - 主 Activity：`app/src/main/java/com/xiaoxi/vibepad/MainActivity.kt`
 - 触控逻辑：`app/src/main/java/com/xiaoxi/vibepad/ui/TrackpadView.kt`
 - 主界面：`app/src/main/java/com/xiaoxi/vibepad/ui/VibePadView.kt`
 - Wi-Fi 传输：`app/src/main/java/com/xiaoxi/vibepad/input/WifiInputSink.kt`
 - Kiosk/沉浸模式：`app/src/main/java/com/xiaoxi/vibepad/system/KioskController.kt`
-- 当前 APK：`/Users/shishuai/vibepad/android/app/build/outputs/apk/debug/app-debug.apk`
+- 当前 APK：`~/vibepad/android/app/build/outputs/apk/debug/app-debug.apk`
 - APK SHA-256：`6a8848080bc79ecbfa82658a6d582f88337715a30f459a6941d0dd03014dd71a`
-- 平板最后已知 ADB serial：`FKFBB18717150491`
+- 平板最后已知 ADB serial：`<平板 serial>`
 - 平板型号：`AGS2-AL00`
 
 当前清单固定横屏：
@@ -132,9 +138,9 @@ android:screenOrientation="landscape"
 
 ### Mac Helper
 
-- Swift 工程：`/Users/shishuai/vibepad/mac-helper`
-- 主源码：`/Users/shishuai/vibepad/mac-helper/Sources/VibePadMacHelper/main.swift`
-- 安装位置：`/Users/shishuai/Applications/VibePad Helper.app`
+- Swift 工程：`~/vibepad/mac-helper`
+- 主源码：`~/vibepad/mac-helper/Sources/VibePadMacHelper/main.swift`
+- 安装位置：`~/Applications/VibePad Helper.app`
 - App 内执行文件：`Contents/MacOS/vibepad-mac-helper`
 - Bundle ID：`com.xiaoxi.vibepad.helper`
 - App 类型：`LSUIElement=true`，不显示 Dock 图标
@@ -142,25 +148,25 @@ android:screenOrientation="landscape"
 
 ### LaunchAgent
 
-- plist：`/Users/shishuai/Library/LaunchAgents/com.xiaoxi.vibepad.mac-helper.plist`
+- plist：`~/Library/LaunchAgents/com.xiaoxi.vibepad.mac-helper.plist`
 - label：`com.xiaoxi.vibepad.mac-helper`
 - 执行路径必须指向 App 内二进制，不能再指向 Swift `.build` 目录：
 
 ```text
-/Users/shishuai/Applications/VibePad Helper.app/Contents/MacOS/vibepad-mac-helper
+~/Applications/VibePad Helper.app/Contents/MacOS/vibepad-mac-helper
 ```
 
-- 标准输出：`/Users/shishuai/Library/Logs/VibePadMacHelper.log`
-- 标准错误：`/Users/shishuai/Library/Logs/VibePadMacHelper.error.log`
+- 标准输出：`~/Library/Logs/VibePadMacHelper.log`
+- 标准错误：`~/Library/Logs/VibePadMacHelper.error.log`
 
 ## 4. 构建、安装和重启
 
 ### 4.1 Android 构建
 
 ```bash
-cd /Users/shishuai/vibepad/android
+cd ~/vibepad/android
 export JAVA_HOME=/opt/homebrew/opt/openjdk@17
-export ANDROID_HOME=/Users/shishuai/Library/Android/sdk
+export ANDROID_HOME=~/Library/Android/sdk
 export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
 ./gradlew assembleDebug
 ```
@@ -175,13 +181,13 @@ adb devices -l
 
 ```bash
 adb install -r \
-  /Users/shishuai/vibepad/android/app/build/outputs/apk/debug/app-debug.apk
+  ~/vibepad/android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ### 4.2 Mac Helper 构建
 
 ```bash
-cd /Users/shishuai/vibepad/mac-helper
+cd ~/vibepad/mac-helper
 swift build -c release
 ```
 
@@ -208,15 +214,18 @@ lsof -nP -iTCP:39876
 ```bash
 launchctl bootout gui/$(id -u)/com.xiaoxi.vibepad.mac-helper
 launchctl bootstrap gui/$(id -u) \
-  /Users/shishuai/Library/LaunchAgents/com.xiaoxi.vibepad.mac-helper.plist
+  ~/Library/LaunchAgents/com.xiaoxi.vibepad.mac-helper.plist
 ```
 
 ## 5. Wi-Fi 架构与协议
 
+> 本节记录的是最初的协议 v1（静态 token）。0.3.0 起已升级为 v2 安全配对，
+> 当前帧格式与全部帧类型见 `mac-helper/README.md`；第 16 节记录了升级过程。
+
 - 平板与 Mac 位于同一个 5GHz Wi-Fi 局域网。
-- 最近使用的 SSID：`xi-wifi_5G`。
-- 平板最近地址：`192.168.0.17`。
-- Mac 最近地址：`192.168.0.35`。
+- 最近使用的 SSID：`<你的 5GHz SSID>`。
+- 平板最近地址：`<平板 IP>`。
+- Mac 最近地址：`<Mac IP>`。
 - 地址可能由 DHCP 改变，不得硬编码依赖。
 - Bonjour service：`_vibepad._tcp.`
 - TCP 端口：`39876`
@@ -455,12 +464,12 @@ Helper 版本不兼容
 ### 10.1 设计产物
 
 - Stitch 项目：`VibePad 高保真横屏控制台`
-- Stitch Project ID：`1802666874039062090`
-- 当前主 Screen ID：`2507afc73372479a9ea552f4fe2328d5`
+- Stitch Project ID：（已省略）
+- 当前主 Screen ID：（已省略）
 - 最终可交互 HTML：
-  `/Users/shishuai/Downloads/codex/output/vibepad-stitch/vibepad-prototype-final.html`
+  `~/Downloads/codex/output/vibepad-stitch/vibepad-prototype-final.html`
 - 早期缩略预览：
-  `/Users/shishuai/Downloads/codex/output/vibepad-stitch/vibepad-prototype.png`
+  `~/Downloads/codex/output/vibepad-stitch/vibepad-prototype.png`
 
 注意：早期 PNG 生成在 Typeless/发送按钮优先级调整之前，仅供视觉风格参考；
 `vibepad-prototype-final.html` 和 Stitch 当前 Screen 才是键位、贴底布局与按钮宽度的
@@ -499,8 +508,7 @@ Helper 版本不兼容
 现有数据源来自：
 
 ```text
-/Users/shishuai/一人公司/clawd-on-desk/web-pet/server.js
-/Users/shishuai/一人公司/clawd-on-desk/web-pet/usage-collector.js
+（本机私有的额度采集服务，不在本仓库内）
 http://127.0.0.1:8088/usage
 http://127.0.0.1:8088/usage/events
 ```
@@ -620,7 +628,7 @@ Vibe Coding 标题右侧增加独立的 `＋` 按钮，语义为“添加自定�
 
 ```text
 请先完整阅读：
-/Users/shishuai/vibepad/docs/HANDOFF.md
+~/vibepad/docs/HANDOFF.md
 
 这是当前已经可用的 VibePad 安卓平板 + Mac Helper 项目。先保持当前稳定基线，
 不要重启蓝牙方案，不要使用 ad-hoc 签名，不要代替我操作任何系统权限。
@@ -642,15 +650,15 @@ Vibe Coding 标题右侧增加独立的 `＋` 按钮，语义为“添加自定�
 - PONG 健康状态：辅助功能授权、Helper/协议版本、最近输入和按住状态；
 - Helper 从 `127.0.0.1:8088/usage` 读取并脱敏转发额度；
 - Android 发送队列优先丢弃/合并 motion，BUTTON/KEY/RELEASE_ALL 不静默丢弃；
-- 固定签名、备份、验证和安装脚本：`/Users/shishuai/vibepad/scripts/release-vibepad.sh`。
+- 固定签名、备份、验证和安装脚本：`~/vibepad/scripts/release-vibepad.sh`。
 
 当前候选产物：
 
 ```text
-/Users/shishuai/vibepad/dist/VibePad-debug.apk
+~/vibepad/dist/VibePad-debug.apk
 SHA-256 783739189e5a96cb0eb78d86bc8923728a21c006c18ff1083eee4daf44ae0f70
 
-/Users/shishuai/vibepad/dist/VibePad Helper.app
+~/vibepad/dist/VibePad Helper.app
 执行文件 SHA-256 2914a6c2d5b9030e4a6d4c9af0dbd913babd956cbd524bf46e922cc54a3fecf8
 ```
 
@@ -662,7 +670,7 @@ SHA-256 783739189e5a96cb0eb78d86bc8923728a21c006c18ff1083eee4daf44ae0f70
 Helper 和平板 APK 均未替换。安装时连接并授权平板后执行：
 
 ```bash
-/Users/shishuai/vibepad/scripts/release-vibepad.sh --install
+~/vibepad/scripts/release-vibepad.sh --install
 ```
 
 脚本在签名身份缺失或 ADB 设备离线时会直接停止，不会退回 ad-hoc，也不会只安装
@@ -691,14 +699,14 @@ Android 日志显示 `status=CONNECTED`。
 最终 APK：
 
 ```text
-/Users/shishuai/vibepad/dist/VibePad-debug.apk
+~/vibepad/dist/VibePad-debug.apk
 SHA-256 09dae9f362e1561dcbe877f0d164887e8d2fcc39c1b687d436d426b75764f9a7
 ```
 
 本轮安装前 APK 备份：
 
 ```text
-/Users/shishuai/vibepad/backups/2026-07-23-ui-polish-preinstall/
+~/vibepad/backups/2026-07-23-ui-polish-preinstall/
 ```
 
 ## 14. 2026-07-23 顶栏与键帽对齐修正版 0.2.2（已安装）
@@ -714,7 +722,7 @@ SHA-256 09dae9f362e1561dcbe877f0d164887e8d2fcc39c1b687d436d426b75764f9a7
 实机复核截图：
 
 ```text
-/Users/shishuai/Downloads/codex/vibepad-v022.png
+~/Downloads/codex/vibepad-v022.png
 ```
 
 ## 15. 2026-07-23 状态栏、额度与设置版 0.2.4（已安装）
@@ -731,8 +739,8 @@ SHA-256 09dae9f362e1561dcbe877f0d164887e8d2fcc39c1b687d436d426b75764f9a7
 实机截图：
 
 ```text
-/Users/shishuai/Downloads/codex/vibepad-v024.png
-/Users/shishuai/Downloads/codex/vibepad-settings-v024-reopen.png
+~/Downloads/codex/vibepad-v024.png
+~/Downloads/codex/vibepad-settings-v024-reopen.png
 ```
 
 ## 16. 2026-07-24 安全配对版 0.3.0（Mac 已安装，平板待连接）
@@ -743,28 +751,28 @@ SHA-256 09dae9f362e1561dcbe877f0d164887e8d2fcc39c1b687d436d426b75764f9a7
 - Mac 与平板同时显示 6 位验证码，最终只在 Mac 弹窗中允许或拒绝；
 - Mac 配对密钥写入 Keychain，Android 配对密钥写入 Android Keystore；
 - 每次重连使用服务端/客户端随机数和双向 HMAC 认证，旧请求不能重放；
-- 未认证客户端不能发送鼠标、键盘、App 启动或额度请求，15 秒未认证自动断开；
+- 未认证客户端不能发送鼠标、键盘、App 启动或额度请求，90 秒未认证自动断开；
 - Mac 菜单提供已配对设备数量和“清除所有配对”；Android 设置页提供配对/重新配对入口；
 - Android：`versionCode=7`、`versionName=0.3.0`。
 
-安全版 Helper 已安装并以固定 Apple Development 身份签名，Team `HB29UXHX7V`，
+安全版 Helper 已安装并以固定 Apple Development 身份签名，固定 Team ID，
 Bundle ID `com.xiaoxi.vibepad.helper`；辅助功能 designated requirement 保持稳定。
 本轮没有 ADB 在线设备，因此 APK 尚未推送到平板。旧版 APK 已无法通过安全认证。
 
 候选产物：
 
 ```text
-/Users/shishuai/vibepad/dist/VibePad-debug.apk
+~/vibepad/dist/VibePad-debug.apk
 SHA-256 a9059416cab2b47404f564b36ab3f688a9db6710203f1a51ba2db1a34ab69805
 
-/Users/shishuai/vibepad/dist/VibePad Helper.app
+~/vibepad/dist/VibePad Helper.app
 执行文件 SHA-256 440f331931c6eb631068472886d01a72d080cfc529d774fb716749201930d521
 ```
 
 安装前 Helper 备份：
 
 ```text
-/Users/shishuai/vibepad/backups/20260724-001208/VibePad Helper.app
+~/vibepad/backups/20260724-001208/VibePad Helper.app
 ```
 
 ## 17. 2026-07-24 触控手感版 0.3.1
@@ -782,10 +790,10 @@ SHA-256 a9059416cab2b47404f564b36ab3f688a9db6710203f1a51ba2db1a34ab69805
 最终候选：
 
 ```text
-/Users/shishuai/vibepad/dist/VibePad-debug.apk
+~/vibepad/dist/VibePad-debug.apk
 SHA-256 fc4a50b10d529ecc3ec864a1a0ba034e8940da3c4988eb3d008456473a829c26
 
-/Users/shishuai/vibepad/dist/VibePad Helper.app
+~/vibepad/dist/VibePad Helper.app
 执行文件 SHA-256 1efbcf02f86dcae05972d5cbfa947c46204b91c87506d0f2d20931fdf5ee6579
 ```
 
@@ -822,7 +830,7 @@ AGS2-AL00 已安装首个 0.3.1 构建（APK SHA-256
   KeepAlive LaunchAgent，避免普通退出后被系统立即拉起；
 - 2026-07-24 12:01 强制重启：旧 PID `44422`，新 PID `50371`；
 - 唯一运行进程路径为
-  `/Users/shishuai/Applications/VibePad Helper.app/Contents/MacOS/vibepad-mac-helper`；
+  `~/Applications/VibePad Helper.app/Contents/MacOS/vibepad-mac-helper`；
 - 运行安装包与 staged 包二进制 SHA-256 均为
   `42b647b8b6dccaab990edbfc54fa26713d4d7ff1745b85cf4b581193a300efec`；
 - Spotlight 搜出的其他 VibePad Helper 均位于 `vibepad-backups` 或 `vibepad-dist`，是
@@ -874,17 +882,17 @@ frame=2008x60 pngBytes=22121 timeout=no
 当前候选尚未复制到 `vibepad-dist`、未签名安装、未替换正在运行的 Helper，也未推送平板。
 
 ```text
-/Users/shishuai/vibepad/mac-helper/.build/release/vibepad-mac-helper
+~/vibepad/mac-helper/.build/release/vibepad-mac-helper
 SHA-256 9eeb977d52de216df50468df3b548439c496ce29de40a282877a8182615dbe15
 
-/Users/shishuai/vibepad/android/app/build/outputs/apk/debug/app-debug.apk
+~/vibepad/android/app/build/outputs/apk/debug/app-debug.apk
 SHA-256 693f53cb532de2f78edf639e2fd72e8b2a73d8e97f7e1d078999d110226c6e15
 ```
 
 开发前完整备份：
 
 ```text
-/Users/shishuai/vibepad/backups/pre-touchbar-20260724-214150
+~/vibepad/backups/pre-touchbar-20260724-214150
 ```
 
 ### 0.3.2 实机安装与链路验收
@@ -893,7 +901,7 @@ SHA-256 693f53cb532de2f78edf639e2fd72e8b2a73d8e97f7e1d078999d110226c6e15
 
 - 平板 `AGS2-AL00`：`versionCode=9`、`versionName=0.3.2`；
 - Helper PID `28110`，LaunchAgent 状态 `running`；
-- Helper 仍使用 Bundle ID `com.xiaoxi.vibepad.helper`、Team `HB29UXHX7V` 和固定
+- Helper 仍使用 Bundle ID `com.xiaoxi.vibepad.helper`、固定 Team ID 和固定
   Apple Development 身份；
 - 安装后 Helper 执行文件 SHA-256：
   `45e96df81d40ae26b3bdd697e1cbdb97a99d6310e99542e6a4dc44b30d2bab84`；
@@ -905,7 +913,7 @@ SHA-256 693f53cb532de2f78edf639e2fd72e8b2a73d8e97f7e1d078999d110226c6e15
 安装前自动备份：
 
 ```text
-/Users/shishuai/vibepad/backups/20260724-220401
+~/vibepad/backups/20260724-220401
 旧 APK SHA-256 65a926bf8f22c4d82c330c070fe682b0d821d5d3a9f0c715c5408a229eb6bf25
 旧 Helper SHA-256 e14f5919f5968a89ba5df867686cd70c6957945e0f080d64489c4dd8112b3999
 ```
@@ -913,8 +921,8 @@ SHA-256 693f53cb532de2f78edf639e2fd72e8b2a73d8e97f7e1d078999d110226c6e15
 验收截图：
 
 ```text
-/Users/shishuai/Downloads/codex/.scratch/vibepad-touchbar-installed.png
-/Users/shishuai/Downloads/codex/.scratch/vibepad-touchbar-after-tap.png
+~/Downloads/codex/.scratch/vibepad-touchbar-installed.png
+~/Downloads/codex/.scratch/vibepad-touchbar-after-tap.png
 ```
 
 ### 0.3.3 纯黑背景版
@@ -927,9 +935,9 @@ SHA-256 693f53cb532de2f78edf639e2fd72e8b2a73d8e97f7e1d078999d110226c6e15
 - 2026-07-24 22:41 已覆盖安装到 `AGS2-AL00`；
 - 实机认证恢复正常，Touch Bar 画面正常，无崩溃日志；
 - 0.3.2 安装前 APK 备份：
-  `/Users/shishuai/vibepad/backups/20260724-224131-black-background`；
+  `~/vibepad/backups/20260724-224131-black-background`；
 - 验收截图：
-  `/Users/shishuai/Downloads/codex/.scratch/vibepad-black-background-installed.png`。
+  `~/Downloads/codex/.scratch/vibepad-black-background-installed.png`。
 
 ### 0.3.4 纯黑面板与悬停滚动修复
 
@@ -943,13 +951,13 @@ SHA-256 693f53cb532de2f78edf639e2fd72e8b2a73d8e97f7e1d078999d110226c6e15
   `b20338fd5cf06a558a0ac00d8ac0c42a3ce4c4ca82359cc23d175597e0053c03`；
 - Helper 固定签名验证通过，PID `79925`，平板重新认证并连接成功；
 - 视觉验收截图：
-  `/Users/shishuai/Downloads/codex/.scratch/vibepad-black-panels-installed.png`。
+  `~/Downloads/codex/.scratch/vibepad-black-panels-installed.png`。
 
 回退点：
 
 ```text
-/Users/shishuai/vibepad/backups/20260724-224454-black-panels
-/Users/shishuai/vibepad/backups/20260724-225648-hover-scroll
+~/vibepad/backups/20260724-224454-black-panels
+~/vibepad/backups/20260724-225648-hover-scroll
 ```
 
 ## 19. 2026-07-24 平板麦克风 → Typeless（0.4.0）
@@ -997,7 +1005,7 @@ VibePad Helper SHA-256
 0c09fc0c8e8b41fe8c3bbfe15f347b48c049c53c5e2d9dafde1471b4e98d2d90
 
 自动备份
-/Users/shishuai/vibepad/backups/20260724-235750
+~/vibepad/backups/20260724-235750
 ```
 
 当前 MVP 的已知安全边界：设备配对与身份验证已有 HMAC/密钥交换保护，但认证后的
@@ -1015,6 +1023,6 @@ VibePad Helper SHA-256
 - Android `versionCode=13`、`versionName=0.4.1`；APK SHA-256：
   `cec634fda2cabd8471eefb634b8ea60876fbb461950bc552ecfbb124cef2790c`；
 - 2026-07-25 00:02 已安装到 `AGS2-AL00`，自动备份：
-  `/Users/shishuai/vibepad/backups/20260725-000217`；
+  `~/vibepad/backups/20260725-000217`；
 - ADB 1.6 秒长按回归显示录音 `00:02:57.924 rec start`，松手后
   `00:02:59.495 rec stop`，无崩溃日志。

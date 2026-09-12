@@ -32,7 +32,6 @@ private enum PacketType: UInt8 {
     case gesture = 0x15
     case ping = 0x20
     case pong = 0x21
-    case usage = 0x30
     case appsRequest = 0x40
     case appsBegin = 0x41
     case appItem = 0x42
@@ -84,14 +83,31 @@ private final class InputInjector {
     private var moveFlushGeneration: UInt64 = 0
     private var scheduledMoveFlush: UInt64?
     private var lastInputAt: Date?
+    // Mirror of (lastInputAt, buttons, heldModifiers) for readers on other threads.
+    // The menu bar polls this from the main thread; it must never block on `queue`,
+    // because the network queue itself blocks on the main thread when the Touch Bar
+    // bridge starts or stops (dispatch_sync to main). Blocking both ways deadlocks.
+    private let statusLock = NSLock()
+    private var statusMirror: (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) = (nil, 0, 0)
 
     init(queue: DispatchQueue) {
         self.queue = queue
     }
 
+    private func markInput() {
+        lastInputAt = Date()
+        publishStatus()
+    }
+
+    private func publishStatus() {
+        statusLock.lock()
+        statusMirror = (lastInputAt, buttons, heldModifiers)
+        statusLock.unlock()
+    }
+
     func move(dx: Int16, dy: Int16) {
         dispatchPrecondition(condition: .onQueue(queue))
-        lastInputAt = Date()
+        markInput()
         pendingMoveX = Self.clampedMoveSum(pendingMoveX, Int64(dx))
         pendingMoveY = Self.clampedMoveSum(pendingMoveY, Int64(dy))
         guard scheduledMoveFlush == nil else { return }
@@ -139,7 +155,7 @@ private final class InputInjector {
     }
 
     func setButton(mask: UInt8, pressed: Bool) {
-        lastInputAt = Date()
+        markInput()
         flushPendingMove()
         let relevant = mask & 0x07
         let next = pressed ? buttons | relevant : buttons & ~relevant
@@ -148,10 +164,11 @@ private final class InputInjector {
         if changed & 2 != 0 { postButton(.right, down: next & 2 != 0) }
         if changed & 4 != 0 { postButton(.center, down: next & 4 != 0) }
         buttons = next
+        publishStatus()
     }
 
     func scroll(vertical: Int16, horizontal: Int16) {
-        lastInputAt = Date()
+        markInput()
         // A two-finger gesture often begins immediately after a pointer move. WindowServer
         // may not have consumed that final move yet, so a location-less synthetic wheel
         // event can be routed to the focused window instead of the window under the cursor.
@@ -173,7 +190,7 @@ private final class InputInjector {
     }
 
     func gesture(_ value: UInt8) {
-        lastInputAt = Date()
+        markInput()
         flushPendingMove()
         switch value {
         case 1: postShortcut(keyCode: 126, flags: .maskControl) // Mission Control
@@ -200,7 +217,7 @@ private final class InputInjector {
     }
 
     func key(hidUsage: UInt16, modifierByte: UInt8, pressed: Bool) {
-        lastInputAt = Date()
+        markInput()
         flushPendingMove()
         // A USB boot-keyboard report represents modifier-only input with usage 0.
         // Modifier usages 0xe0...0xe7 are accepted as well for protocol clients
@@ -249,9 +266,11 @@ private final class InputInjector {
         return (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
     }
 
-    /// 供菜单栏状态面板使用；允许从其他线程调用。
+    /// 供菜单栏状态面板使用；允许从其他线程调用，且不会阻塞在 `queue` 上。
     func inputStatusSnapshot() -> (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) {
-        queue.sync { (lastInputAt, buttons, heldModifiers) }
+        statusLock.lock()
+        defer { statusLock.unlock() }
+        return statusMirror
     }
 
     private func updateModifiers(mask: UInt8, pressed: Bool) {
@@ -269,6 +288,7 @@ private final class InputInjector {
             event.flags = Self.eventFlags(from: heldModifiers)
             event.post(tap: .cghidEventTap)
         }
+        publishStatus()
     }
 
     private func postButton(_ button: CGMouseButton, down: Bool) {
@@ -459,75 +479,11 @@ private final class AppCatalog {
     }
 }
 
-private final class UsageProvider {
-    private let lock = NSLock()
-    private var cached: Data?
-    private var lastFetch = Date.distantPast
-    private var fetchInFlight = false
-
-    func refresh(completion: @escaping (Data?) -> Void) {
-        lock.lock()
-        let shouldFetch = !fetchInFlight && Date().timeIntervalSince(lastFetch) >= 30
-        let current = cached
-        if shouldFetch {
-            fetchInFlight = true
-            lastFetch = Date()
-        }
-        lock.unlock()
-        if !shouldFetch {
-            completion(current)
-            return
-        }
-        guard let url = URL(string: "http://127.0.0.1:8088/usage") else {
-            finish(data: nil, completion: completion)
-            return
-        }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 3
-        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
-            guard let self else { return }
-            self.finish(data: data.flatMap(Self.sanitized), completion: completion)
-        }.resume()
-    }
-
-    private func finish(data: Data?, completion: @escaping (Data?) -> Void) {
-        lock.lock()
-        if let data { cached = data }
-        fetchInFlight = false
-        let result = cached
-        lock.unlock()
-        completion(result)
-    }
-
-    private static func sanitized(_ data: Data) -> Data? {
-        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        func windows(_ value: Any?, names: [String]) -> [String: Any] {
-            guard let object = value as? [String: Any] else { return [:] }
-            var result: [String: Any] = [:]
-            for name in names {
-                if let window = object[name] as? [String: Any] {
-                    result[name] = [
-                        "used_pct": window["used_pct"] ?? NSNull(),
-                        "reset_at": window["reset_at"] ?? NSNull(),
-                    ]
-                }
-            }
-            return result
-        }
-        let safe: [String: Any] = [
-            "claude": windows(root["claude"], names: ["five_hour", "seven_day", "fable_5"]),
-            "codex": windows(root["codex"], names: ["five_hour", "weekly"]),
-        ]
-        return try? JSONSerialization.data(withJSONObject: safe)
-    }
-}
-
 private final class ClientSession {
     private let connection: NWConnection
     private let injector: InputInjector
     private let queue: DispatchQueue
     private let appCatalog: AppCatalog
-    private let usageProvider: UsageProvider
     private let pairingGate: PairingGate
     private let pairingStore: PairingStore
     private let audioSink: AudioSink
@@ -537,7 +493,6 @@ private final class ClientSession {
     private var pairingInProgress = false
     private var stopped = false
     private let serverNonce = PairingCrypto.randomBytes(count: 32)
-    private var lastUsageSentAt = Date.distantPast
     private let touchBar = WPTouchBarBridge()
     private var touchBarSubscribed = false
     private var nextTouchBarFrameID: UInt32 = 1
@@ -548,7 +503,6 @@ private final class ClientSession {
         injector: InputInjector,
         queue: DispatchQueue,
         appCatalog: AppCatalog,
-        usageProvider: UsageProvider,
         pairingGate: PairingGate,
         pairingStore: PairingStore,
         audioSink: AudioSink,
@@ -559,7 +513,6 @@ private final class ClientSession {
         self.injector = injector
         self.queue = queue
         self.appCatalog = appCatalog
-        self.usageProvider = usageProvider
         self.pairingGate = pairingGate
         self.pairingStore = pairingStore
         self.audioSink = audioSink
@@ -640,13 +593,6 @@ private final class ClientSession {
             injector.gesture(packet.payload[0])
         case .ping:
             send(type: .pong, sequence: packet.sequence, payload: injector.healthPayload())
-            if Date().timeIntervalSince(lastUsageSentAt) >= 30 {
-                lastUsageSentAt = Date()
-                usageProvider.refresh { [weak self] data in
-                    guard let self, let data else { return }
-                    self.queue.async { self.send(type: .usage, sequence: packet.sequence, payload: data) }
-                }
-            }
         case .appsRequest:
             send(type: .appsBegin, sequence: packet.sequence)
             appCatalog.load { [weak self] apps in
@@ -904,7 +850,6 @@ private final class VibePadServer {
     private let queue = DispatchQueue(label: "com.xiaoxi.vibepad.mac-helper", qos: .userInteractive)
     private lazy var injector = InputInjector(queue: queue)
     private let appCatalog = AppCatalog()
-    private let usageProvider = UsageProvider()
     private let pairingGate: PairingGate
     private let pairingStore: PairingStore
     private let audioSink = AudioSink()
@@ -916,7 +861,7 @@ private final class VibePadServer {
         self.pairingStore = pairingStore
     }
 
-    /// 供菜单栏状态面板使用；线程安全（InputInjector 内部 queue.sync）。
+    /// 供菜单栏状态面板使用；线程安全，且不会阻塞网络队列。
     func inputStatusSnapshot() -> (lastInputAt: Date?, buttons: UInt8, modifiers: UInt8) {
         injector.inputStatusSnapshot()
     }
@@ -950,7 +895,6 @@ private final class VibePadServer {
                 injector: self.injector,
                 queue: self.queue,
                 appCatalog: self.appCatalog,
-                usageProvider: self.usageProvider,
                 pairingGate: self.pairingGate,
                 pairingStore: self.pairingStore,
                 audioSink: self.audioSink,
