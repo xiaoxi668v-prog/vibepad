@@ -3,6 +3,8 @@
 > 本文是开发过程中的交接记录，保留了历史版本、SHA-256 与验收步骤，供理解设计取舍。
 > 其中的家目录、设备型号、IP 与 SSID 已替换为占位符；当前构建方式以根目录
 > README 与 `scripts/release-vibepad.sh` 为准。
+> 开源版已删除早期蓝牙 HID 传输、Device Owner/lock-task 配置和顶栏 Claude/Codex
+> 额度栏（含 Helper 读取本机 8088 端口的逻辑），本文涉及这些内容的章节仅为历史记录。
 
 > **2026-09-10 改名公告**：项目由 WebPad 改名为 VibePad，源码从
 > `~/Downloads/codex/` 迁至 `~/vibepad/`（android/、mac-helper/、scripts/、docs/）。

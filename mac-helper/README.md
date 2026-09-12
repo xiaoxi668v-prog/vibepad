@@ -80,7 +80,6 @@ Aggregate 输入设备（UID `com.xiaoxi.vibepad.microphone`），供 Typeless �
 | `0x15` | 平板→Mac | GESTURE | `id:u8`：1 Mission Control、2 App Exposé、3/4 上/下一桌面、5 显示桌面、6 Spotlight、7/8 放大/缩小、9 查询 |
 | `0x20` | 平板→Mac | PING | 任意（平板发送 8 字节时间戳） |
 | `0x21` | Mac→平板 | PONG | JSON 健康状态：`accessibilityTrusted`、`helperVersion`、`protocolVersion`、`lastInputAgeMs`、`mouseButtons`、`modifiers`；sequence 与 PING 相同 |
-| `0x30` | Mac→平板 | USAGE | 脱敏后的额度 JSON（来自本机 `127.0.0.1:8088/usage`，无则不发） |
 | `0x40` | 平板→Mac | APPS_REQUEST | 空 |
 | `0x41`/`0x42`/`0x43` | Mac→平板 | APPS_BEGIN / APP_ITEM / APPS_END | APP_ITEM 为 JSON：`name`、`bundleId`、可选 `icon`（48px PNG base64） |
 | `0x44` | 平板→Mac | LAUNCH_APP | UTF-8 bundle ID，仅允许 Helper 已枚举的 App |
