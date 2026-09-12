@@ -29,7 +29,6 @@ import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.ArrayAdapter
@@ -42,8 +41,6 @@ import com.xiaoxi.vibepad.input.InputSink
 import com.xiaoxi.vibepad.input.MicrophoneStreamer
 import com.xiaoxi.vibepad.input.RemoteApp
 import com.xiaoxi.vibepad.input.TouchBarFrame
-import com.xiaoxi.vibepad.input.UsageSnapshot
-import com.xiaoxi.vibepad.input.UsageWindow
 import com.xiaoxi.vibepad.input.WifiInputSink
 import org.json.JSONArray
 import org.json.JSONObject
@@ -106,12 +103,8 @@ class VibePadView(
 
     fun setHelperHealth(health: HelperHealth) = statusHeader.setHealth(health)
 
-    fun setUsageSnapshot(usage: UsageSnapshot) = statusHeader.setUsage(usage)
-
     /** May be called from the network thread; decoding never runs on the UI thread. */
     fun setTouchBarFrame(frame: TouchBarFrame) = statusHeader.setTouchBarFrame(frame)
-
-    fun setHeaderMode(mode: HeaderMode) = statusHeader.setHeaderMode(mode)
 
     fun setMicrophoneState(state: MicrophoneStreamer.State) {
         if (!::microphoneCard.isInitialized) return
@@ -487,6 +480,18 @@ class VibePadView(
             orientation = VERTICAL
             setPadding(dp(18), dp(8), dp(18), dp(8))
         }
+        val dialog = AlertDialog.Builder(context)
+            .setTitle("自定义快捷键")
+            .setView(ScrollView(context).apply { addView(panel) })
+            .setPositiveButton("添加") { _, _ -> showShortcutEditor(null) }
+            .setNegativeButton("完成", null)
+            .create()
+        // Reorder/delete rebuild the list by reopening the dialog; dismiss the old one
+        // first so dialogs do not stack up behind each other.
+        fun reopen() {
+            dialog.dismiss()
+            showShortcutManager()
+        }
         customShortcuts.forEachIndexed { index, shortcut ->
             panel.addView(LinearLayout(context).apply {
                 gravity = Gravity.CENTER_VERTICAL
@@ -506,19 +511,25 @@ class VibePadView(
                                     val item = customShortcuts.removeAt(index)
                                     customShortcuts.add(index - 1, item)
                                     saveShortcuts()
-                                    showShortcutManager()
+                                    renderCustomShortcuts()
+                                    reopen()
                                 }
                                 "↓" -> if (index < customShortcuts.lastIndex) {
                                     val item = customShortcuts.removeAt(index)
                                     customShortcuts.add(index + 1, item)
                                     saveShortcuts()
-                                    showShortcutManager()
+                                    renderCustomShortcuts()
+                                    reopen()
                                 }
-                                "编辑" -> showShortcutEditor(index)
+                                "编辑" -> {
+                                    dialog.dismiss()
+                                    showShortcutEditor(index)
+                                }
                                 "删除" -> {
                                     customShortcuts.removeAt(index)
                                     saveShortcuts()
                                     renderCustomShortcuts()
+                                    reopen()
                                 }
                             }
                         }
@@ -526,12 +537,7 @@ class VibePadView(
                 }
             }, LayoutParams(MATCH_PARENT, dp(52)))
         }
-        AlertDialog.Builder(context)
-            .setTitle("自定义快捷键")
-            .setView(ScrollView(context).apply { addView(panel) })
-            .setPositiveButton("添加") { _, _ -> showShortcutEditor(null) }
-            .setNegativeButton("完成", null)
-            .show()
+        dialog.show()
     }
 
     private fun showShortcutEditor(index: Int?) {
@@ -549,10 +555,12 @@ class VibePadView(
             adapter = ArrayAdapter(context, android.R.layout.simple_spinner_dropdown_item, keys.map { it.first })
             setSelection(keys.indexOfFirst { it.second == current?.usage }.coerceAtLeast(0))
         }
-        val command = CheckBox(context).apply { text = "Command ⌘"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_GUI) != 0 }
-        val control = CheckBox(context).apply { text = "Control ⌃"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_CONTROL) != 0 }
-        val shift = CheckBox(context).apply { text = "Shift ⇧"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_SHIFT) != 0 }
-        val option = CheckBox(context).apply { text = "Option ⌥"; isChecked = current?.modifiers?.and(HidModifiers.LEFT_ALT) != 0 }
+        // A new shortcut has no current modifiers; `null != 0` would tick every box.
+        val currentModifiers = current?.modifiers ?: 0
+        val command = CheckBox(context).apply { text = "Command ⌘"; isChecked = currentModifiers and HidModifiers.LEFT_GUI != 0 }
+        val control = CheckBox(context).apply { text = "Control ⌃"; isChecked = currentModifiers and HidModifiers.LEFT_CONTROL != 0 }
+        val shift = CheckBox(context).apply { text = "Shift ⇧"; isChecked = currentModifiers and HidModifiers.LEFT_SHIFT != 0 }
+        val option = CheckBox(context).apply { text = "Option ⌥"; isChecked = currentModifiers and HidModifiers.LEFT_ALT != 0 }
         panel.addView(label)
         panel.addView(spinner)
         panel.addView(command)
@@ -661,8 +669,7 @@ class VibePadView(
 
     private data class CustomShortcut(val label: String, val usage: Int, val modifiers: Int)
 
-    enum class HeaderMode { TOUCH_BAR, QUOTA }
-
+    /** 顶栏：时间、Wi-Fi/Helper 状态、电量、设置按钮，其余宽度显示 Mac Touch Bar 画面。 */
     private class StatusHeaderView(
         context: Context,
         private val sinkProvider: () -> InputSink,
@@ -677,11 +684,9 @@ class VibePadView(
         private val battery = BatteryStatusView(context)
         private var networkConnected = false
         private var helperUsable = false
-        @Volatile private var headerMode = HeaderMode.TOUCH_BAR
         @Volatile private var isWindowAttached = false
         private var subscribedSink: WifiInputSink? = null
         private val touchBarView = TouchBarImageView(context, touchBarSinkProvider)
-        private val quotaContainer = LinearLayout(context)
         private val contentHost = FrameLayout(context)
         private val pendingFrame = AtomicReference<QueuedTouchBarFrame?>()
         private val decodeScheduled = AtomicBoolean(false)
@@ -689,13 +694,6 @@ class VibePadView(
         private var displayedSequence = 0L
         @Volatile private var decodeGeneration = 0L
         @Volatile private var decodeExecutor: ExecutorService? = null
-        private val quotaViews = listOf(
-            QuotaView(context, "Claude 5h"),
-            QuotaView(context, "Claude 7d"),
-            QuotaView(context, "Fable 5"),
-            QuotaView(context, "Codex 5h"),
-            QuotaView(context, "Codex 7d"),
-        )
         private val updater = object : Runnable {
             override fun run() {
                 refresh()
@@ -734,24 +732,11 @@ class VibePadView(
                 }, LayoutParams(dp(context, 28), dp(context, 28)).apply { marginStart = dp(context, 5) })
             }, LayoutParams(WRAP_CONTENT, MATCH_PARENT))
 
-            quotaContainer.apply {
-                orientation = HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(context, 7), 0, 0, 0)
-                quotaViews.forEachIndexed { index, quota ->
-                    addView(quota, LayoutParams(0, dp(context, 27), 1f).apply {
-                        marginStart = if (index == 0) 0 else dp(context, 2)
-                        marginEnd = if (index == quotaViews.lastIndex) 0 else dp(context, 2)
-                    })
-                }
-            }
             contentHost.apply {
                 setPadding(dp(context, 7), dp(context, 3), 0, dp(context, 3))
-                addView(quotaContainer, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
                 addView(touchBarView, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
             }
             addView(contentHost, LayoutParams(0, MATCH_PARENT, 1f))
-            applyHeaderMode()
             refresh()
         }
 
@@ -760,28 +745,8 @@ class VibePadView(
             updateWifiColor()
         }
 
-        fun setUsage(usage: UsageSnapshot) {
-            val windows = listOf(
-                usage.claudeFiveHour, usage.claudeSevenDay, usage.claudeFable,
-                usage.codexFiveHour, usage.codexWeekly,
-            )
-            quotaViews.zip(windows).forEach { (view, value) -> view.setUsage(value) }
-        }
-
-        fun setHeaderMode(mode: HeaderMode) {
-            if (headerMode == mode) return
-            headerMode = mode
-            applyHeaderMode()
-            syncSubscription()
-        }
-
-        private fun applyHeaderMode() {
-            touchBarView.visibility = if (headerMode == HeaderMode.TOUCH_BAR) VISIBLE else GONE
-            quotaContainer.visibility = if (headerMode == HeaderMode.QUOTA) VISIBLE else GONE
-        }
-
         fun setTouchBarFrame(frame: TouchBarFrame) {
-            if (headerMode != HeaderMode.TOUCH_BAR || !isWindowAttached || frame.bytes.isEmpty()) return
+            if (!isWindowAttached || frame.bytes.isEmpty()) return
             val queued = QueuedTouchBarFrame(
                 sequence = receivedSequence.incrementAndGet(),
                 generation = decodeGeneration,
@@ -803,7 +768,6 @@ class VibePadView(
                             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: continue
                             handler.post {
                                 if (isWindowAttached &&
-                                    headerMode == HeaderMode.TOUCH_BAR &&
                                     queued.generation == decodeGeneration &&
                                     queued.sequence > displayedSequence
                                 ) {
@@ -838,9 +802,7 @@ class VibePadView(
 
         private fun syncSubscription() {
             val candidate = touchBarSinkProvider()
-            val shouldSubscribe = isWindowAttached &&
-                headerMode == HeaderMode.TOUCH_BAR &&
-                candidate?.isConnected == true
+            val shouldSubscribe = isWindowAttached && candidate?.isConnected == true
             if (shouldSubscribe && subscribedSink !== candidate) {
                 subscribedSink?.setTouchBarSubscribed(false)
                 candidate?.setTouchBarSubscribed(true)
@@ -977,36 +939,6 @@ class VibePadView(
                 private const val TOUCH_UP = 2
                 private const val TOUCH_MOVE_INTERVAL_MS = 8L
                 private const val NORMALIZED_MAX = 65_535f
-            }
-        }
-
-        private class QuotaView(context: Context, private val label: String) : LinearLayout(context) {
-            private val text = TextView(context)
-            private val bar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal)
-            init {
-                orientation = VERTICAL
-                setPadding(dp(context, 6), dp(context, 2), dp(context, 6), dp(context, 2))
-                background = GradientDrawable().apply {
-                    setColor(COLOR_PANEL)
-                    cornerRadius = dp(context, 5).toFloat()
-                }
-                addView(text.apply {
-                    this.text = "$label  --"
-                    textSize = 8.5f
-                    maxLines = 1
-                    gravity = Gravity.CENTER_VERTICAL
-                    setTextColor(COLOR_MUTED)
-                }, LayoutParams(MATCH_PARENT, dp(context, 15)))
-                addView(bar.apply {
-                    max = 100
-                    progress = 0
-                    progressDrawable.setTint(COLOR_PRIMARY)
-                }, LayoutParams(MATCH_PARENT, dp(context, 3)))
-            }
-
-            fun setUsage(window: UsageWindow) {
-                text.text = "$label  ${window.usedPercent?.let { "$it%" } ?: "--"}"
-                bar.progress = window.usedPercent ?: 0
             }
         }
 

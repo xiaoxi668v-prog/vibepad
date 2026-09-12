@@ -1,31 +1,51 @@
 #!/bin/zsh
+# 构建 + 固定身份签名 + 打包到 dist/；加 --install 时再安装到本机与已连接平板。
+#
+# 可配置项（全部通过环境变量覆盖，脚本不再硬编码任何个人路径）：
+#   SIGNING_IDENTITY     必填。稳定的 Apple Development 签名身份，例如
+#                        "Apple Development: you@example.com (TEAMID1234)"。
+#                        身份缺失时脚本直接停止，绝不回退到 ad-hoc 签名。
+#   VIBEPAD_INSTALL_DIR  Helper 安装目录，默认 ~/Applications
+#   JAVA_HOME            默认 /opt/homebrew/opt/openjdk@17
+#   ANDROID_HOME         默认 ~/Library/Android/sdk
 set -euo pipefail
 
-ROOT="/Users/shishuai/vibepad"
+SCRIPT_DIR="${0:A:h}"
+ROOT="${SCRIPT_DIR:h}"
 ANDROID_PROJECT="$ROOT/android"
 HELPER_PROJECT="$ROOT/mac-helper"
-INSTALLED_HELPER="/Users/shishuai/Applications/VibePad Helper.app"
-SIGNING_IDENTITY="Apple Development: shishuaiok@sina.cn (347H32TQSD)"
+INSTALL_DIR="${VIBEPAD_INSTALL_DIR:-$HOME/Applications}"
+INSTALLED_HELPER="$INSTALL_DIR/VibePad Helper.app"
+SIGNING_IDENTITY="${SIGNING_IDENTITY:-}"
 DIST_DIR="$ROOT/dist"
 STAGED_HELPER="$DIST_DIR/VibePad Helper.app"
 INFO_PLIST_TEMPLATE="$HELPER_PROJECT/Resources/Info.plist"
+LAUNCH_AGENT_TEMPLATE="$SCRIPT_DIR/com.xiaoxi.vibepad.mac-helper.plist"
+LAUNCH_AGENT_LABEL="com.xiaoxi.vibepad.mac-helper"
+LAUNCH_AGENT_PATH="$HOME/Library/LaunchAgents/$LAUNCH_AGENT_LABEL.plist"
 APK="$ANDROID_PROJECT/app/build/outputs/apk/debug/app-debug.apk"
 HELPER_BINARY="$HELPER_PROJECT/.build/release/vibepad-mac-helper"
 MODE="${1:-stage}"
 
 if [[ "$MODE" != "stage" && "$MODE" != "--install" ]]; then
-  echo "Usage: $0 [stage|--install]" >&2
+  echo "Usage: SIGNING_IDENTITY='Apple Development: ...' $0 [stage|--install]" >&2
   exit 2
 fi
 
-if ! security find-identity -v -p codesigning | grep -Fq "\"$SIGNING_IDENTITY\""; then
-  echo "Required signing identity is unavailable; refusing to use ad-hoc signing." >&2
+if [[ -z "$SIGNING_IDENTITY" ]]; then
+  echo "SIGNING_IDENTITY is not set. Export a stable Apple Development identity first;" >&2
+  echo "run 'security find-identity -v -p codesigning' to list the ones on this Mac." >&2
   exit 3
 fi
 
-export JAVA_HOME="/opt/homebrew/opt/openjdk@17"
-export ANDROID_HOME="/Users/shishuai/Library/Android/sdk"
-export PATH="/opt/homebrew/opt/openjdk@17/bin:$PATH"
+if ! security find-identity -v -p codesigning | grep -Fq "\"$SIGNING_IDENTITY\""; then
+  echo "Signing identity '$SIGNING_IDENTITY' is unavailable; refusing to use ad-hoc signing." >&2
+  exit 3
+fi
+
+export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@17}"
+export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
+export PATH="$JAVA_HOME/bin:$PATH"
 
 (cd "$ANDROID_PROJECT" && ./gradlew :app:assembleDebug)
 (cd "$HELPER_PROJECT" && swift build -c release)
@@ -35,7 +55,7 @@ if [[ -e "$STAGED_HELPER" ]]; then
   mv "$STAGED_HELPER" "$DIST_DIR/VibePad Helper.previous.$(date +%Y%m%d-%H%M%S).app"
 fi
 
-# 从仓库模板构建 App bundle，不再依赖已安装副本
+# 从仓库模板构建 App bundle，不依赖已安装副本
 mkdir -p "$STAGED_HELPER/Contents/MacOS"
 cp -p "$INFO_PLIST_TEMPLATE" "$STAGED_HELPER/Contents/Info.plist"
 cp -p "$HELPER_BINARY" "$STAGED_HELPER/Contents/MacOS/vibepad-mac-helper"
@@ -44,6 +64,8 @@ codesign --force --deep --options runtime --timestamp=none \
   --sign "$SIGNING_IDENTITY" "$STAGED_HELPER"
 codesign --verify --deep --strict --verbose=2 "$STAGED_HELPER"
 
+# designated requirement 必须绑定固定 Bundle ID 与开发者证书，而不是本次构建的 cdhash；
+# 否则每次更新二进制后 macOS 都会静默收回“辅助功能”授权。
 requirement="$(codesign -dvvv -r- "$STAGED_HELPER" 2>&1)"
 if [[ "$requirement" != *'identifier "com.xiaoxi.vibepad.helper"'* ||
       "$requirement" != *"anchor apple generic"* ||
@@ -73,25 +95,24 @@ if [[ "$MODE" == "--install" ]]; then
     adb pull "$installed_apk" "$backup_dir/app-before-install.apk"
   fi
 
-  mkdir -p "/Users/shishuai/Applications"
+  mkdir -p "$INSTALL_DIR"
   ditto "$STAGED_HELPER" "$INSTALLED_HELPER"
   codesign --verify --deep --strict --verbose=2 "$INSTALLED_HELPER"
 
-  # LaunchAgent 换装新 label
-  old_label="com.xiaoxi.webpad.mac-helper"
-  new_label="com.xiaoxi.vibepad.mac-helper"
-  launchctl bootout "gui/$(id -u)/$old_label" 2>/dev/null || true
-  launchctl bootout "gui/$(id -u)/$new_label" 2>/dev/null || true
-  cp -p "$ROOT/scripts/com.xiaoxi.vibepad.mac-helper.plist" \
-    "/Users/shishuai/Library/LaunchAgents/com.xiaoxi.vibepad.mac-helper.plist"
-  launchctl bootstrap "gui/$(id -u)" \
-    "/Users/shishuai/Library/LaunchAgents/com.xiaoxi.vibepad.mac-helper.plist"
+  # 生成 LaunchAgent：launchd 不展开 ~，模板中的占位符在这里替换为真实路径
+  mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs"
+  launchctl bootout "gui/$(id -u)/com.xiaoxi.webpad.mac-helper" 2>/dev/null || true  # 旧名称
+  launchctl bootout "gui/$(id -u)/$LAUNCH_AGENT_LABEL" 2>/dev/null || true
+  sed -e "s|__HELPER_BINARY__|$INSTALLED_HELPER/Contents/MacOS/vibepad-mac-helper|g" \
+      -e "s|__HOME__|$HOME|g" \
+      "$LAUNCH_AGENT_TEMPLATE" > "$LAUNCH_AGENT_PATH"
+  launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT_PATH"
 
   adb install -r "$APK"
 
   echo ""
-  echo "首次以新 Bundle ID 安装后，需要手动完成两件事："
-  echo "1. 系统设置 → 隐私与安全性 → 辅助功能 → 移除旧 WebPad Helper，添加 VibePad Helper"
-  echo "2. 平板端进入设置页重新配对（旧配对密钥已随 Bundle ID 更换作废）"
-  echo "3. Typeless 输入源重新选择「VibePad Microphone」"
+  echo "安装完成。首次安装或签名身份变化后还需手动完成："
+  echo "1. 系统设置 → 隐私与安全性 → 辅助功能 → 添加 VibePad Helper（旧条目先移除）"
+  echo "2. 平板端进入设置页配对（Mac 菜单栏先点“允许配对新平板（60 秒）”）"
+  echo "3. Typeless 输入源选择「VibePad Microphone」"
 fi

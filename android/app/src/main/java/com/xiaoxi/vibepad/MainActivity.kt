@@ -19,7 +19,6 @@ import com.xiaoxi.vibepad.input.MicrophoneStreamer
 import com.xiaoxi.vibepad.input.RemoteApp
 import com.xiaoxi.vibepad.input.RemoteDataListener
 import com.xiaoxi.vibepad.input.TouchBarFrame
-import com.xiaoxi.vibepad.input.UsageSnapshot
 import com.xiaoxi.vibepad.input.WifiInputSink
 import com.xiaoxi.vibepad.ui.NoOpInputSink
 import com.xiaoxi.vibepad.ui.VibePadView
@@ -58,10 +57,6 @@ class MainActivity : Activity() {
                     vibePadView?.setHelperHealth(health)
                 }
 
-                override fun onUsageSnapshot(usage: UsageSnapshot) = runOnUiThread {
-                    vibePadView?.setUsageSnapshot(usage)
-                }
-
                 override fun onTouchBarFrame(frame: TouchBarFrame) {
                     vibePadView?.setTouchBarFrame(frame)
                 }
@@ -98,8 +93,8 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Installs the live HID/network sink without rebuilding the UI. This may be called after
-     * Bluetooth connects; all controls resolve the sink lazily for every input event.
+     * Installs the live network sink without rebuilding the UI; all controls resolve the
+     * sink lazily for every input event, so a placeholder can be swapped out later.
      */
     fun attachInputSink(sink: InputSink) {
         inputSink.releaseAll()
@@ -397,7 +392,6 @@ class MainActivity : Activity() {
                 microphonePressHeld = false
                 stopMicrophoneAndTypeless(MicrophoneStreamer.STOP_REASON_LIFECYCLE)
                 inputSink.releaseAll()
-                kioskController?.exitLockTask()
                 kioskController?.restoreSystemBars()
                 finishAndRemoveTask()
             }

@@ -104,7 +104,8 @@ final class PairingStore {
         return attributes[kSecAttrDescription as String] as? String
     }
 
-    func pairedDeviceCount() -> Int {        let query: [String: Any] = [
+    func pairedDeviceCount() -> Int {
+        let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecReturnAttributes as String: true,
@@ -387,18 +388,8 @@ final class MenuBarController: NSObject {
         }
     }
 
+    /// 供 Tests/MenuBarSchedulingProbe.swift 读取状态栏标题。
     var displayedStatusTitle: String { item.button?.title ?? "" }
-
-    // 供 Tests/ 下探针验证图标与菜单内容使用
-    static func debugIcon(connected: Bool, pairingOpen: Bool) -> NSImage {
-        makeIcon(connected: connected, pairingOpen: pairingOpen)
-    }
-
-    var debugVisibleMenuTitles: [String] {
-        menu.items.filter { !$0.isSeparatorItem && !$0.isHidden }.map { $0.title }
-    }
-
-    var debugDisplayedIcon: NSImage? { item.button?.image }
 }
 
 extension Data {
