@@ -23,10 +23,6 @@ backups/     安装前自动备份（本地产出，不进 git）
 两端通过 `0x60/0x61/0x62` 三个帧双向同步，Mac 侧存在
 `~/Library/Application Support/VibePad/pad-config.json`。
 
-> 本分支（opensource-release）为开源发布版：已移除私有「额度显示」功能
-> （原数据源是作者本机的私有服务，他人机器不可用）。完整功能版见
-> `claude/skin-adaptation-settings-oop3b4` 分支。
-
 ## 环境要求
 
 - macOS 12+，Xcode 命令行工具（`swift build`）。
