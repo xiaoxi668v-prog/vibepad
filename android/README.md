@@ -11,9 +11,6 @@ minSdk 28）。通过 Bonjour 发现 VibePad Mac Helper，建立认证 TCP 连�
 - 传输、配对与认证（`input/WifiInputSink.kt`、`input/PairingSecurity.kt`），
   配对密钥保存在 Android Keystore。
 
-`input/BluetoothHidInputSink.kt` 与 `PreferredInputSink.kt` 是早期蓝牙 HID 方案的
-历史代码，`MainActivity` 不会实例化它们，manifest 也没有声明蓝牙权限。
-
 ## 构建
 
 ```sh
@@ -33,5 +30,4 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 3. “按住说话”首次会申请 `RECORD_AUDIO` 权限，授权后重新按住。
 
 App 以沉浸式全屏运行并禁用返回键；退出入口在设置页。`system/KioskController.kt`
-只有在设备管理员已把本包加入 lock-task 允许列表时才会进入锁定模式，不会主动
-申请 Device Owner。
+只负责隐藏系统栏和保持常亮，不申请 Device Owner，也不进入 lock-task 模式。
