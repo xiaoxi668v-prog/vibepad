@@ -6,6 +6,18 @@
 平板麦克风直通 Typeless。平板与 Mac 在同一 5GHz 局域网内通过 Bonjour 发现、
 TCP 直连，首次使用需在 Mac 菜单栏允许配对并核对 6 位验证码。
 
+## 界面预览（真机截图）
+
+三套皮肤，在平板设置弹层或 Mac 菜单栏「VibePad 设置…」里切换：
+
+| 经典（classic） | 深空专业（graphite） | 双手操控（titanium） |
+| :---: | :---: | :---: |
+| [![经典皮肤](docs/assets/vibepad-classic.png)](docs/assets/vibepad-classic.png) | [![深空专业皮肤](docs/assets/vibepad-graphite.png)](docs/assets/vibepad-graphite.png) | [![双手操控皮肤](docs/assets/vibepad-titanium.png)](docs/assets/vibepad-titanium.png) |
+
+经典：左手列集成常用 App、Vibe Coding 键位与编辑键，右侧整面触控板。
+深空专业：左侧大触控板 + 右侧快捷键列 + 底部 App 坞。
+双手操控：中央触控板，左右两列按拇指分工（左应用与编辑、右 Vibe Coding）。
+
 ## 结构
 
 ```text
@@ -54,8 +66,6 @@ scripts/release-vibepad.sh --install  # 并安装到本机 ~/Applications 与已
 - 每次重连做双向 HMAC 挑战应答，旧请求不能重放；未认证连接不能注入任何输入。
 - 认证之后的会话**没有逐帧加密和完整性校验**，只适合可信局域网。请不要在公共
   Wi-Fi 上使用；如需对外发布，应为整个会话加 TLS 或逐包 AEAD。
-
-详细协议、历史坑和验收流程见 [docs/HANDOFF.md](docs/HANDOFF.md)。
 
 ## 许可证
 

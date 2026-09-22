@@ -69,13 +69,13 @@ HID Keyboard/Keypad usage；helper 负责将其映射为 macOS virtual keycode�
 
 配置存放在 `~/Library/Application Support/VibePad/pad-config.json`，通过
 `0x60 CONFIG_REQUEST` / `0x61 CONFIG` / `0x62 CONFIG_UPDATE` 三个帧与平板双向同步，
-`revision` 大的一方胜出。字段与冲突规则见 `docs/HANDOFF.md` 第 20 节。
+`revision` 大的一方胜出。字段定义见 `PadConfigStore.swift` 与平板端的 `PadConfig.kt`。
 
 心跳回执 `0x21 PONG` 的健康 JSON 增加 `frontmostApp`（当前前台 App 的 bundle id），
 平板用它高亮常用 App。
 
 > 上面的 “Wire protocol v1” 一节是历史记录：当前实际协议为 v2（HMAC 配对与鉴权、
-> Touch Bar 画面、音频、配置同步），以 `docs/HANDOFF.md` 与源码为准。
+> Touch Bar 画面、音频、配置同步），以源码为准。
 
 ## 线路格式
 

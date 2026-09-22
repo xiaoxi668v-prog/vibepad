@@ -46,5 +46,4 @@ HANDOFF.md、QA.md）。改 02/05 时优先编辑 `orbit-source/src/selected-fra
 
 色板在 `android/app/src/main/java/com/xiaoxi/vibepad/ui/Skin.kt`，布局在同目录的
 `VibePadView.kt`。原型里本项目做不到的元素（固定 Touch Bar 标签、亮度/音量滑杆、
-Coding/日常模式、文字输入弹层、演示转写）按交接约定不实现，理由见
-`docs/HANDOFF.md` 第 20.2 节。
+Coding/日常模式、文字输入弹层、演示转写）按交接约定不实现。
