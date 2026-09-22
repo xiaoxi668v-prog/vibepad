@@ -24,10 +24,20 @@
 
 - 一台 Mac（macOS 12 或更新）和一台安卓平板（Android 9 或更新，横屏使用）。
 - 两台设备连**同一个 WiFi**（5GHz 频段体验最好）。
-- 平板用 USB 线连到 Mac 上，并打开「开发者选项 → USB 调试」
-  （华为/荣耀：设置 → 关于平板 → 连点「版本号」7 次打开开发者选项）。
 
-### 第 1 步：一键安装（在 Mac 上执行）
+### 第 1 步：安装（在 Mac 上操作）
+
+**方式 A：下载安装包（推荐，不用构建）**
+
+到 [Releases](https://github.com/xiaoxi668v-prog/vibepad/releases/latest) 下载两个文件：
+
+1. `VibePadHelper-x.x.x-macos.zip`：解压后把 `VibePad Helper.app` 拖进「应用程序」。
+   **首次打开要右键 → 打开**（个人开发者签名未公证，Gatekeeper 会拦一次，属正常）。
+2. `VibePad-x.x.x.apk`：装到平板上，任选一种：
+   - 平板 USB 连 Mac（开 USB 调试），执行 `adb install VibePad-x.x.x.apk`；
+   - 或把 APK 通过微信/网盘发到平板上直接点击安装（允许「未知来源」）。
+
+**方式 B：从源码构建**
 
 ```bash
 git clone https://github.com/xiaoxi668v-prog/vibepad.git
@@ -43,6 +53,7 @@ Android SDK），按提示装好再跑一次即可。
 > `SIGNING_IDENTITY` 用免费 Apple ID 在 Xcode 里登录后即可获得
 > （Xcode → 设置 → Accounts → 添加 Apple ID → Manage Certificates 点 +）。
 > 必须固定用同一个身份，不要省略这一步——否则每次更新 Mac 都会静默收回授权。
+> 方式 A 下载的包由项目作者签名，不受影响。
 
 ### 第 2 步：给 Mac 授权（只做一次）
 
