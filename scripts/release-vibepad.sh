@@ -56,8 +56,9 @@ if [[ -e "$STAGED_HELPER" ]]; then
 fi
 
 # 从仓库模板构建 App bundle，不依赖已安装副本
-mkdir -p "$STAGED_HELPER/Contents/MacOS"
+mkdir -p "$STAGED_HELPER/Contents/MacOS" "$STAGED_HELPER/Contents/Resources"
 cp -p "$INFO_PLIST_TEMPLATE" "$STAGED_HELPER/Contents/Info.plist"
+cp -p "$HELPER_PROJECT/Resources/AppIcon.icns" "$STAGED_HELPER/Contents/Resources/AppIcon.icns"
 cp -p "$HELPER_BINARY" "$STAGED_HELPER/Contents/MacOS/vibepad-mac-helper"
 
 codesign --force --deep --options runtime --timestamp=none \

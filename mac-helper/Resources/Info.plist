@@ -10,6 +10,8 @@
     <string>vibepad-mac-helper</string>
     <key>CFBundleIdentifier</key>
     <string>com.xiaoxi.vibepad.helper</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>

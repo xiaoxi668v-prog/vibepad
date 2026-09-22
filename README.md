@@ -1,5 +1,7 @@
 # VibePad
 
+<p align="center"><img src="docs/assets/vibepad-icon.png" width="128" alt="VibePad 图标"></p>
+
 安卓平板变 Mac 无线触控台：触控板与系统手势、Vibe Coding 快捷键、Touch Bar 画面回传、
 平板麦克风直通 Typeless。平板与 Mac 在同一 5GHz 局域网内通过 Bonjour 发现、
 TCP 直连，首次使用需在 Mac 菜单栏允许配对并核对 6 位验证码。
