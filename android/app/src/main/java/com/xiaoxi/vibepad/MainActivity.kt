@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.pm.PackageManager
+import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -109,8 +111,23 @@ class MainActivity : Activity() {
             }
             },
         ).also { wifiSink = it }
-        microphoneStreamer = MicrophoneStreamer(wifi, ::onMicrophoneStateChanged)
+        microphoneStreamer = MicrophoneStreamer(wifi, ::onMicrophoneStateChanged, createMicWifiLock())
         attachInputSink(wifi)
+    }
+
+    private fun createMicWifiLock(): WifiManager.WifiLock? {
+        return try {
+            val manager = applicationContext.getSystemService(WifiManager::class.java) ?: return null
+            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                WifiManager.WIFI_MODE_FULL_LOW_LATENCY
+            } else {
+                @Suppress("DEPRECATION")
+                WifiManager.WIFI_MODE_FULL_HIGH_PERF
+            }
+            manager.createWifiLock(mode, "vibepad:mic").apply { setReferenceCounted(false) }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /**

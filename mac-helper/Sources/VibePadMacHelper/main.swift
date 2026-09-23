@@ -1053,6 +1053,10 @@ private func secureMain() {
     }
 }
 
+// launchd redirecting stdout to a log file makes it block-buffered; switch to line
+// buffering so helper logs appear in real time.
+setvbuf(stdout, nil, _IOLBF, 0)
+
 // Enter AppKit's main loop directly on the process main thread. Wrapping this non-returning
 // call in a Swift MainActor Task prevents later MainActor tasks from being scheduled.
 MainActor.assumeIsolated { secureMain() }

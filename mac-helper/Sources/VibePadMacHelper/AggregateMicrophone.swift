@@ -50,6 +50,13 @@ enum AggregateMicrophone {
         return true
     }
 
+    static func destroy() {
+        if let existing = findDevice(uid: uid) {
+            AudioHardwareDestroyAggregateDevice(existing)
+            print("Destroyed VibePad aggregate microphone (device \(existing))")
+        }
+    }
+
     private static func findDevice(uid requestedUID: String) -> AudioDeviceID? {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDevices,
@@ -99,9 +106,11 @@ enum AggregateMicrophone {
         }
         var value: Unmanaged<CFArray>?
         var valueSize = UInt32(MemoryLayout<Unmanaged<CFArray>?>.size)
-        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &valueSize, &value) == noErr,
-              let list = value?.takeUnretainedValue() as? [[String: Any]] else { return [] }
-        return list.compactMap { $0[kAudioSubDeviceUIDKey as String] as? String }
+        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &valueSize, &value) == noErr else {
+            return []
+        }
+        // The full sub-device list is a flat array of sub-device UID strings.
+        return (value?.takeUnretainedValue() as? [String]) ?? []
     }
 
     private static func inputChannelCount(_ deviceID: AudioDeviceID) -> Int {

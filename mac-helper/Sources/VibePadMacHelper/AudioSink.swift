@@ -24,9 +24,9 @@ final class AudioSink {
     private static let requiredFramesPerPacket: UInt16 = 480
     private static let outputFramesPerPacket = 960
     private static let outputBytesPerPacket = outputFramesPerPacket * 2 * MemoryLayout<Int16>.size
-    private static let prebufferPacketCount = 4
-    private static let outputBufferCount = 20 // 400 ms; latency is capped separately.
-    private static let maximumScheduledFrames = 14_400 // 300 ms at 48 kHz
+    private static let prebufferPacketCount = 15 // 300 ms; measured LAN TCP RTT spikes to ~330 ms
+    private static let outputBufferCount = 40 // 800 ms; exceeds the scheduled-latency cap below
+    private static let maximumScheduledFrames = 38_400 // 800 ms at 48 kHz
 
     private let queue = DispatchQueue(label: "com.xiaoxi.vibepad.audio", qos: .userInitiated)
     private var owner: UUID?
@@ -39,6 +39,7 @@ final class AudioSink {
     private var scheduledFrames = 0
     private var playbackStarted = false
     private var lastAudioSequence: UInt32?
+    private var lastArrivalNs: UInt64 = 0
 
     @discardableResult
     func start(
@@ -129,7 +130,8 @@ final class AudioSink {
             outputQueue = createdQueue
             allBuffers = allocated
             freeBuffers = allocated
-            print("VibePad audio stream \(requestedStreamID) opened on directed VibePadAudio AudioQueue (80 ms prebuffer)")
+            let prebufferMs = Self.prebufferPacketCount * Int(Self.requiredFramesPerPacket) * 1000 / Int(Self.requiredSampleRate)
+            print("VibePad audio stream \(requestedStreamID) opened on directed VibePadAudio AudioQueue (\(prebufferMs) ms prebuffer)")
             return true
         }
     }
@@ -155,11 +157,17 @@ final class AudioSink {
                 self.resetPlaybackLocked()
             }
             self.lastAudioSequence = audioSequence
+            let nowNs = DispatchTime.now().uptimeNanoseconds
+            if self.lastArrivalNs != 0 {
+                let gapMs = (nowNs - self.lastArrivalNs) / 1_000_000
+                if gapMs > 150 { print("VibePad audio arrival gap \(gapMs) ms") }
+            }
+            self.lastArrivalNs = nowNs
             let converted = Self.upsampleTo48kStereo(pcm16LE)
 
             if self.playbackStarted,
                self.scheduledFrames + Self.outputFramesPerPacket > Self.maximumScheduledFrames {
-                print("VibePad audio exceeded 300 ms queued latency; rebuffering latest audio")
+                print("VibePad audio exceeded \(Self.maximumScheduledFrames / 48) ms queued latency; rebuffering latest audio")
                 self.resetPlaybackLocked()
             }
 

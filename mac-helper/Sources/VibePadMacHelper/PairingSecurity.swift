@@ -4,7 +4,7 @@ import Foundation
 import Security
 
 enum HelperInfo {
-    static let version = "3.5.0"
+    static let version = "3.6.0"
 }
 
 enum PairingCrypto {

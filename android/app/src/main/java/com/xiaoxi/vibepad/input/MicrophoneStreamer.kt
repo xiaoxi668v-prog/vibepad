@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.net.wifi.WifiManager
 import android.os.Process
 import android.os.SystemClock
 import android.util.Log
@@ -14,6 +15,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 class MicrophoneStreamer(
     private val sink: WifiInputSink,
     private val stateListener: (State, String?) -> Unit = { _, _ -> },
+    // Held while streaming so the Wi-Fi radio stays in low-latency mode; without it the
+    // tablet's power save batches outbound packets at beacon intervals (~100-300 ms),
+    // which starves the Mac-side playback buffer and chops the audio.
+    private val wifiLock: WifiManager.WifiLock? = null,
 ) {
     enum class State { IDLE, STARTING, RECORDING, ERROR }
 
@@ -71,6 +76,11 @@ class MicrophoneStreamer(
             recorder = candidate
             streamId = id
             running.set(true)
+            try {
+                wifiLock?.let { if (!it.isHeld) it.acquire() }
+            } catch (error: Exception) {
+                Log.w(TAG, "Unable to acquire Wi-Fi low-latency lock", error)
+            }
             sink.startAudio(id, SAMPLE_RATE, CHANNELS, FORMAT_PCM16_LE, FRAMES_PER_PACKET)
             captureThread = Thread({ capture(candidate, id) }, "vibepad-mic-capture").apply {
                 isDaemon = true
@@ -107,6 +117,11 @@ class MicrophoneStreamer(
             if (captureThread === activeThread) captureThread = null
         }
         try { activeRecorder?.release() } catch (_: Exception) { }
+        try {
+            wifiLock?.let { if (it.isHeld) it.release() }
+        } catch (error: Exception) {
+            Log.w(TAG, "Unable to release Wi-Fi low-latency lock", error)
+        }
         sink.stopAudio(activeStreamId, reason)
         stateListener(State.IDLE, null)
     }

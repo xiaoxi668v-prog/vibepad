@@ -35,11 +35,6 @@
 #import <stdint.h>
 #import <string.h>
 
-// Temporary M1 bring-up logging (non-RT paths only — never log from DoIOOperation).
-#define VPD_LOG(...) do { \
-    os_log(OS_LOG_DEFAULT, "VibePadAudio: " __VA_ARGS__); \
-} while (0)
-
 //==================================================================================================
 #pragma mark -
 #pragma mark Constants
@@ -76,8 +71,30 @@ enum
 // to have restarted: the ring is dropped and re-anchored instead of glitching.
 #define kVPDRingResyncThresholdFrames (kVPDRingCapacityFrames / 2)
 
+// Fixed loopback latency: the input side serves audio this many frames behind the output
+// sample-time line. Producer and consumer cycles have independent sizes and phases (the
+// consumer is typically an aggregate device with its own cadence); without a deliberate delay
+// line the reader chases the write head and interleaves cycle-sized silence into the audio.
+enum { kVPDLoopbackLatencyFrames = 4096 };  // ~85 ms at 48 kHz
+
 // Frames between successive zero time stamps. The HAL requires this to be at least 10923.
+// Zero-timestamp period: how often the device clock's sample time wraps. The host wraps the
+// IO-cycle timestamps it hands us at this period; the ring unwraps them with per-direction
+// epoch tracking, so the period only needs to comfortably exceed the resync threshold.
 #define kVPDZeroTimeStampPeriodFrames 16384
+
+// Unwraps a wrapping sample time onto a continuous line: returns the representative closest to
+// the previous unwrapped value. Callers remember the result per stream.
+#define kVPDTimeUninitialized INT64_MIN
+static inline int64_t VPD_UnwrapSampleTime(int64_t prev, int64_t raw)
+{
+    int64_t period = (int64_t)kVPDZeroTimeStampPeriodFrames;
+    if (prev == kVPDTimeUninitialized) { return raw; }
+    int64_t candidate = raw;
+    while (candidate - prev > period / 2) { candidate -= period; }
+    while (candidate - prev <= -period / 2) { candidate += period; }
+    return candidate;
+}
 
 static const Float64 kVPDSampleRate44100 = 44100.0;
 static const Float64 kVPDSampleRate48000 = 48000.0;
@@ -119,19 +136,49 @@ typedef struct
     _Atomic(UInt64) ringBytesWritten;   // producer counter (output side)
     _Atomic(UInt64) ringBytesRead;      // consumer counter (input side)
 
-    // Bring-up diagnostics (M2); RT-safe atomic counters, reported from StopIO.
-    _Atomic(UInt64) dbgMixOutputCalls;
-    _Atomic(UInt64) dbgReadInputCalls;
-    _Atomic(UInt64) dbgMixOutputBytes;
-
     // Mapping between the output side's sample-time line and the ring producer counter, used to
     // detect producer restarts. Only touched by the output IO op.
     _Atomic(int) ringAnchorValid;
     _Atomic(UInt64) ringAnchorSampleTime;   // Float64 bits are stored as int64-safe value
     _Atomic(UInt64) ringAnchorFrameCounter;
+
+    // Loopback health telemetry, reported from StopIO. Single atomic adds on the IO thread.
+    _Atomic(UInt64) ringReadFutureFrames;   // reader asked for frames not yet written
+    _Atomic(UInt64) ringReadStaleFrames;    // reader asked for frames already overwritten
+    _Atomic(UInt64) ringWriteCycles;        // MixOutput calls received from the host
+    _Atomic(UInt64) ringWriteZeroCycles;    // MixOutput calls whose payload was all zeros
+
+    // Epoch tracking for unwrapping the host's period-wrapped cycle timestamps. Only non-zero
+    // write cycles advance the writer epoch, so it always follows the real audio stream's
+    // timeline; the aggregate's silent stream never touches it.
+    _Atomic(int64_t) writeTimeUnwrapped;
+    _Atomic(int64_t) readTimeUnwrapped;
+
+    // RT-safe trace of the last 32 write cycles: (sampleTime, frames, allZero). Diagnosis only.
+    UInt64 writeTraceTime[32];
+    UInt32 writeTraceFrames[32];
+    UInt8  writeTraceZero[32];
+    _Atomic(UInt32) writeTraceIndex;
+
+    // Same for the read side: (raw mInputTime, frames, firstWanted low bits).
+    UInt64 readTraceTime[32];
+    UInt32 readTraceFrames[32];
+    UInt32 readTraceWanted[32];
+    _Atomic(UInt32) readTraceIndex;
+
+    _Atomic(UInt64) ringWriteResyncs;       // anchor resets due to producer timeline jumps
+
+    // Hole events: read cycles that came out all-zero while the ring held data. RT-safe.
+    int64_t holeRawTime[16];
+    int64_t holeFirstWanted[16];
+    int64_t holeWrittenFrames[16];
+    int64_t holeAnchorTime[16];
+    int64_t holeAnchorFrame[16];
+    _Atomic(UInt32) holeIndex;
 } VPDState;
 
 static VPDState gVPD;
+
 static pthread_mutex_t gVPDMutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Defined at the bottom of this file; referenced by the CFPlugIn factory.
@@ -142,23 +189,40 @@ extern AudioServerPlugInDriverRef gAudioServerPlugInDriverRef;
 #pragma mark Ring Buffer (real-time safe: no allocation, no locks, no logging)
 //==================================================================================================
 
-// Copies src into the ring at the current write position, wrapping at the capacity boundary.
-static inline void VPD_RingCopyIn(const UInt8* _Nonnull src, UInt64 byteCount)
+// Re-anchors the position line one latency-depth ahead of the write head and pre-zeros the
+// reader's lookback window BEFORE publishing the new anchor, so a racing reader observing
+// either anchor sees zeros there, never stale storage. Returns the new write position.
+static int64_t VPD_ReanchorRing(int64_t sampleTime, int64_t written)
 {
-    UInt64 written = atomic_load_explicit(&gVPD.ringBytesWritten, memory_order_relaxed);
-    UInt64 pos = written & (UInt64)(kVPDRingCapacityBytes - 1);
-    UInt64 first = kVPDRingCapacityBytes - pos;
-    if (first > byteCount) { first = byteCount; }
-    memcpy(gVPD.ringStorage + pos, src, first);
-    if (first < byteCount)
+    int64_t fillEnd = written + kVPDLoopbackLatencyFrames;
+    for (int64_t p = written; p < fillEnd; p++)
     {
-        memcpy(gVPD.ringStorage, src + first, byteCount - first);
+        memset(gVPD.ringStorage + ((UInt64)p * kVPDBytesPerFrame & (UInt64)(kVPDRingCapacityBytes - 1)),
+               0, kVPDBytesPerFrame);
     }
+    atomic_store_explicit(&gVPD.ringAnchorSampleTime, (UInt64)sampleTime, memory_order_relaxed);
+    atomic_store_explicit(&gVPD.ringAnchorFrameCounter, (UInt64)fillEnd, memory_order_relaxed);
+    atomic_fetch_add_explicit(&gVPD.ringWriteResyncs, 1, memory_order_relaxed);
+    return fillEnd;
 }
 
-// Output side: consume one IO cycle of interleaved samples into the ring. The HAL hands us a
-// raw sample buffer (not an AudioBufferList): inIOBufferFrameSize * kVPDBytesPerFrame bytes.
-// Full buffers overwrite the oldest data; the consumer counter is advanced to make room.
+// Output side: consume one IO cycle of interleaved samples into the ring, at the position the
+// host's sample-time stamp says it belongs to.
+//
+// This device usually has TWO concurrent writers: the helper's AudioQueue (real audio) and —
+// whenever a client records from the aggregate wrapper — a second, silent output stream driven
+// by the host. The silent stream runs on a different clock domain, so it must never steer the
+// position anchor or the unwrap epoch: a shared anchor would resync ping-pong between the two
+// timelines and tear the ring apart. Silence carries no positional information, so all-zero
+// cycles are dropped entirely — positions ahead of the write head read back as zeros anyway,
+// and a mid-stream pause is restored exactly by the gap fill when the next non-zero cycle
+// lands at its timestamped position.
+//
+// Rules:
+//  - all-zero cycles return after telemetry; they never touch the ring, anchor, or epoch;
+//  - non-zero payloads write at their timestamped position;
+//  - gaps between the previous write head and a new cycle are zero-filled, so the valid window
+//    [written-capacity, written) never exposes storage from a previous wrap.
 static void VPD_RingWrite(const UInt8* _Nonnull src, UInt64 totalBytes,
                           const AudioServerPlugInIOCycleInfo* _Nullable cycleInfo)
 {
@@ -166,71 +230,211 @@ static void VPD_RingWrite(const UInt8* _Nonnull src, UInt64 totalBytes,
     // counters stay frame-aligned.
     totalBytes -= totalBytes % kVPDBytesPerFrame;
     if (totalBytes == 0) { return; }
+    UInt64 frames = totalBytes / kVPDBytesPerFrame;
 
-    UInt64 written = atomic_load_explicit(&gVPD.ringBytesWritten, memory_order_relaxed);
+    // Telemetry: an all-zero cycle is expected from the aggregate's silent stream; the counters
+    // distinguish that from a starving real producer.
+    atomic_fetch_add_explicit(&gVPD.ringWriteCycles, 1, memory_order_relaxed);
+    Boolean allZero = true;
+    {
+        const Float32* s = (const Float32*)src;
+        UInt64 n = totalBytes / sizeof(Float32);
+        for (UInt64 i = 0; i < n; i++)
+        {
+            if (s[i] != 0.0f) { allZero = false; break; }
+        }
+    }
+    if (allZero) { atomic_fetch_add_explicit(&gVPD.ringWriteZeroCycles, 1, memory_order_relaxed); }
+    {
+        UInt32 slot = atomic_fetch_add_explicit(&gVPD.writeTraceIndex, 1, memory_order_relaxed) % 32;
+        gVPD.writeTraceTime[slot] = (cycleInfo != NULL) ? (UInt64)cycleInfo->mOutputTime.mSampleTime : 0;
+        gVPD.writeTraceFrames[slot] = (UInt32)frames;
+        gVPD.writeTraceZero[slot] = allZero ? 1 : 0;
+    }
 
-    // Anchor / resync against the output sample-time line so a restarted producer (helper app
-    // relaunch, AudioQueue reset) does not smear stale audio across the seam.
+    // Silent cycles are dropped: they carry no information the reader cannot synthesize, and
+    // letting the aggregate's foreign-timeline silence steer the anchor corrupts real-audio
+    // placement.
+    if (allZero) { return; }
+
+    int64_t written = (int64_t)(atomic_load_explicit(&gVPD.ringBytesWritten, memory_order_relaxed)
+                                / kVPDBytesPerFrame);
+
+    // Map the cycle onto the ring's position line through the anchor. Without timestamps there
+    // is no positional reference: append at the write head.
+    int64_t p0 = written;
     if (cycleInfo != NULL && (cycleInfo->mOutputTime.mFlags & kAudioTimeStampSampleTimeValid) != 0)
     {
-        int64_t sampleTime = (int64_t)cycleInfo->mOutputTime.mSampleTime;
+        int64_t raw = (int64_t)cycleInfo->mOutputTime.mSampleTime;
         if (atomic_load_explicit(&gVPD.ringAnchorValid, memory_order_relaxed) == 0)
         {
-            atomic_store_explicit(&gVPD.ringAnchorSampleTime, (UInt64)sampleTime, memory_order_relaxed);
-            atomic_store_explicit(&gVPD.ringAnchorFrameCounter, written / kVPDBytesPerFrame, memory_order_relaxed);
+            atomic_store_explicit(&gVPD.ringAnchorSampleTime, (UInt64)raw, memory_order_relaxed);
+            atomic_store_explicit(&gVPD.ringAnchorFrameCounter, (UInt64)written, memory_order_relaxed);
             atomic_store_explicit(&gVPD.ringAnchorValid, 1, memory_order_relaxed);
+            atomic_store_explicit(&gVPD.writeTimeUnwrapped, raw, memory_order_relaxed);
+            p0 = written;
         }
         else
         {
             int64_t anchorTime = (int64_t)atomic_load_explicit(&gVPD.ringAnchorSampleTime, memory_order_relaxed);
             int64_t anchorFrame = (int64_t)atomic_load_explicit(&gVPD.ringAnchorFrameCounter, memory_order_relaxed);
-            int64_t expected = anchorTime + ((int64_t)(written / kVPDBytesPerFrame) - anchorFrame);
-            int64_t drift = sampleTime - expected;
-            if (drift > kVPDRingResyncThresholdFrames || drift < -(int64_t)kVPDRingResyncThresholdFrames)
+            // Fold the wrapped raw timestamp toward the freshest same-clock reference. The
+            // reader's epoch is the ground truth while IO runs (its cycles never pause), and
+            // it is the ONLY reference that survives a producer pause: the position-line
+            // expectation freezes when the write head stalls, while the reader keeps time.
+            // A reader far BEHIND the expectation is stale (IO stopped long ago) and must not
+            // pull the fold back; a reader far AHEAD simply means the producer paused.
+            int64_t expected = anchorTime + (written - anchorFrame);
+            int64_t ref = expected;
+            int64_t readerT = atomic_load_explicit(&gVPD.readTimeUnwrapped, memory_order_relaxed);
+            if (readerT != kVPDTimeUninitialized
+                && expected - readerT <= kVPDZeroTimeStampPeriodFrames / 2)
             {
-                // Producer jumped: drop everything buffered and re-anchor at the new timeline.
-                atomic_store_explicit(&gVPD.ringBytesRead, written, memory_order_release);
-                atomic_store_explicit(&gVPD.ringAnchorSampleTime, (UInt64)sampleTime, memory_order_relaxed);
-                atomic_store_explicit(&gVPD.ringAnchorFrameCounter, written / kVPDBytesPerFrame, memory_order_relaxed);
+                ref = readerT;
+            }
+            int64_t sampleTime = VPD_UnwrapSampleTime(ref, raw);
+            atomic_store_explicit(&gVPD.writeTimeUnwrapped, sampleTime, memory_order_relaxed);
+            p0 = anchorFrame + (sampleTime - anchorTime);
+            if (p0 - written > kVPDRingResyncThresholdFrames
+                || written - p0 > kVPDRingResyncThresholdFrames)
+            {
+                // Producer timeline jumped (restart or a long pause).
+                p0 = VPD_ReanchorRing(sampleTime, written);
+            }
+            else if (p0 + (int64_t)frames <= written)
+            {
+                // The whole cycle landed behind the write head: with a single in-order
+                // producer this can only be an epoch mis-fold across a pause with no live
+                // reader to disambiguate it. Re-anchor to unstick the write head; the epoch
+                // stays self-consistent because any future reader seeds from the writer.
+                p0 = VPD_ReanchorRing(sampleTime, written);
             }
         }
     }
 
-    UInt64 read = atomic_load_explicit(&gVPD.ringBytesRead, memory_order_acquire);
-    UInt64 available = written - read;
-    if (available > (UInt64)kVPDRingCapacityBytes)
+    // Zero-fill the gap between the write head and this cycle, so every position in the valid
+    // window has been written this wrap.
+    if (p0 > written && p0 - written < kVPDRingCapacityFrames)
     {
-        // Defensive: the consumer fell impossibly far behind (e.g. counters were reset). Clamp.
-        read = written - kVPDRingCapacityBytes;
-        atomic_store_explicit(&gVPD.ringBytesRead, read, memory_order_release);
-        available = kVPDRingCapacityBytes;
+        UInt64 from = (UInt64)written;
+        UInt64 to = (UInt64)p0;
+        for (UInt64 p = from; p < to; p++)
+        {
+            memset(gVPD.ringStorage + (p * kVPDBytesPerFrame & (UInt64)(kVPDRingCapacityBytes - 1)),
+                   0, kVPDBytesPerFrame);
+        }
     }
 
-    // A single IO cycle larger than the ring keeps only its tail. Both operands are multiples of
-    // the frame size, so the skip stays frame-aligned.
-    UInt64 skipHead = 0;
-    if (totalBytes > (UInt64)kVPDRingCapacityBytes)
-    {
-        skipHead = totalBytes - kVPDRingCapacityBytes;
-    }
-    UInt64 payloadBytes = totalBytes - skipHead;
+    // Clip the part that has already fallen out of the valid window.
+    int64_t start = p0;
+    if (start < written - kVPDRingCapacityFrames) { start = written - kVPDRingCapacityFrames; }
+    int64_t end = p0 + (int64_t)frames;
+    if (end <= start) { return; }
 
-    // Overwrite the oldest data when the ring would overflow.
-    if (available + payloadBytes > (UInt64)kVPDRingCapacityBytes)
+    for (int64_t p = start; p < end; p++)
     {
-        UInt64 drop = available + payloadBytes - kVPDRingCapacityBytes;
-        atomic_store_explicit(&gVPD.ringBytesRead, read + drop, memory_order_release);
+        memcpy(gVPD.ringStorage + ((UInt64)p * kVPDBytesPerFrame & (UInt64)(kVPDRingCapacityBytes - 1)),
+               src + (UInt64)(p - p0) * kVPDBytesPerFrame, kVPDBytesPerFrame);
     }
 
-    VPD_RingCopyIn(src + skipHead, payloadBytes);
-    atomic_store_explicit(&gVPD.ringBytesWritten, written + payloadBytes, memory_order_release);
+    if (end > written)
+    {
+        atomic_store_explicit(&gVPD.ringBytesWritten, (UInt64)end * kVPDBytesPerFrame,
+                              memory_order_release);
+    }
 }
 
-// Input side: fill one IO cycle's worth of interleaved samples from the ring. Reads past the
-// producer are zero-filled (silence) so clients always get exactly the bytes they asked for.
-static void VPD_RingRead(UInt8* _Nonnull dst, UInt64 size)
+// Input side: fill one IO cycle from the ring by sample-time position. The requested input
+// time is mapped through the writer's anchor and served with a fixed kVPDLoopbackLatencyFrames
+// delay, so independent producer/consumer cycle sizes and phases cannot interleave silence
+// into the stream. Frames never written (or already overwritten) come back as zeros.
+static void VPD_RingRead(UInt8* _Nonnull dst, UInt64 size,
+                         const AudioServerPlugInIOCycleInfo* _Nullable cycleInfo)
 {
     UInt64 written = atomic_load_explicit(&gVPD.ringBytesWritten, memory_order_acquire);
+
+    if (cycleInfo != NULL
+        && (cycleInfo->mInputTime.mFlags & kAudioTimeStampSampleTimeValid) != 0
+        && atomic_load_explicit(&gVPD.ringAnchorValid, memory_order_acquire) != 0)
+    {
+        int64_t anchorTime = (int64_t)atomic_load_explicit(&gVPD.ringAnchorSampleTime, memory_order_relaxed);
+        int64_t anchorFrame = (int64_t)atomic_load_explicit(&gVPD.ringAnchorFrameCounter, memory_order_relaxed);
+        int64_t writtenFrames = (int64_t)(written / kVPDBytesPerFrame);
+        int64_t oldestKept = writtenFrames - kVPDRingCapacityFrames;
+        int64_t prevIn = atomic_load_explicit(&gVPD.readTimeUnwrapped, memory_order_relaxed);
+        if (prevIn == kVPDTimeUninitialized)
+        {
+            // First read cycle: seed the reader epoch from the writer's, so a reader that
+            // starts mid-stream lands on the same epoch as the anchor.
+            int64_t writerT = atomic_load_explicit(&gVPD.writeTimeUnwrapped, memory_order_relaxed);
+            prevIn = writerT;
+        }
+        int64_t inTime = VPD_UnwrapSampleTime(prevIn, (int64_t)cycleInfo->mInputTime.mSampleTime);
+        atomic_store_explicit(&gVPD.readTimeUnwrapped, inTime, memory_order_relaxed);
+        int64_t firstWanted = anchorFrame + (inTime - anchorTime) - kVPDLoopbackLatencyFrames;
+
+        {
+            UInt32 slot = atomic_fetch_add_explicit(&gVPD.readTraceIndex, 1, memory_order_relaxed) % 32;
+            gVPD.readTraceTime[slot] = (UInt64)cycleInfo->mInputTime.mSampleTime;
+            gVPD.readTraceFrames[slot] = (UInt32)(size / kVPDBytesPerFrame);
+            gVPD.readTraceWanted[slot] = (UInt32)(firstWanted & 0xFFFFFF);
+        }
+
+        UInt64 frames = size / kVPDBytesPerFrame;
+        Float32* out = (Float32*)dst;
+        UInt64 future = 0, stale = 0;
+        for (UInt64 i = 0; i < frames; i++)
+        {
+            int64_t p = firstWanted + (int64_t)i;
+            if (p >= oldestKept && p < writtenFrames && p >= 0)
+            {
+                UInt64 bytePos = ((UInt64)p * kVPDBytesPerFrame) & (UInt64)(kVPDRingCapacityBytes - 1);
+                memcpy(out + i * 2, gVPD.ringStorage + bytePos, kVPDBytesPerFrame);
+            }
+            else
+            {
+                out[i * 2] = 0.0f;
+                out[i * 2 + 1] = 0.0f;
+                if (p >= writtenFrames) { future++; } else { stale++; }
+            }
+        }
+        if (future > 0) { atomic_fetch_add_explicit(&gVPD.ringReadFutureFrames, future, memory_order_relaxed); }
+        if (stale > 0) { atomic_fetch_add_explicit(&gVPD.ringReadStaleFrames, stale, memory_order_relaxed); }
+
+        // Record cycles that came out all-zero while the ring held data at or past the
+        // requested range: those are the audible dropouts, not legitimate silence.
+        if (firstWanted < writtenFrames && writtenFrames > kVPDLoopbackLatencyFrames * 2)
+        {
+            Boolean anyNonZero = false;
+            for (UInt64 i = 0; i < frames && !anyNonZero; i++)
+            {
+                if (out[i * 2] != 0.0f || out[i * 2 + 1] != 0.0f) { anyNonZero = true; }
+            }
+            if (!anyNonZero)
+            {
+                UInt32 slot = atomic_fetch_add_explicit(&gVPD.holeIndex, 1, memory_order_relaxed) % 16;
+                gVPD.holeRawTime[slot] = (int64_t)cycleInfo->mInputTime.mSampleTime;
+                gVPD.holeFirstWanted[slot] = firstWanted;
+                gVPD.holeWrittenFrames[slot] = writtenFrames;
+                gVPD.holeAnchorTime[slot] = anchorTime;
+                gVPD.holeAnchorFrame[slot] = anchorFrame;
+            }
+        }
+
+        // Keep the writer's overwrite bookkeeping aligned with the reader's trailing edge,
+        // monotonic only: the reader never moves the read pointer backwards.
+        int64_t trailing = firstWanted + (int64_t)frames;
+        if (trailing > writtenFrames) { trailing = writtenFrames; }
+        if (trailing > 0)
+        {
+            UInt64 read = atomic_load_explicit(&gVPD.ringBytesRead, memory_order_relaxed);
+            UInt64 newRead = (UInt64)trailing * kVPDBytesPerFrame;
+            if (newRead > read) { atomic_store_explicit(&gVPD.ringBytesRead, newRead, memory_order_release); }
+        }
+        return;
+    }
+
+    // Sequential fallback for clients that do not supply timestamps: chase the write head.
     UInt64 read = atomic_load_explicit(&gVPD.ringBytesRead, memory_order_relaxed);
 
     int64_t available = (int64_t)(written - read);
@@ -268,6 +472,13 @@ static void VPD_ResetRingAndClock(void)
     atomic_store_explicit(&gVPD.ringBytesRead, 0, memory_order_relaxed);
     atomic_store_explicit(&gVPD.ringBytesWritten, 0, memory_order_relaxed);
     atomic_store_explicit(&gVPD.ringAnchorValid, 0, memory_order_relaxed);
+    atomic_store_explicit(&gVPD.ringReadFutureFrames, 0, memory_order_relaxed);
+    atomic_store_explicit(&gVPD.ringReadStaleFrames, 0, memory_order_relaxed);
+    atomic_store_explicit(&gVPD.ringWriteCycles, 0, memory_order_relaxed);
+    atomic_store_explicit(&gVPD.ringWriteZeroCycles, 0, memory_order_relaxed);
+    atomic_store_explicit(&gVPD.writeTimeUnwrapped, kVPDTimeUninitialized, memory_order_relaxed);
+    atomic_store_explicit(&gVPD.readTimeUnwrapped, kVPDTimeUninitialized, memory_order_relaxed);
+    memset(gVPD.ringStorage, 0, kVPDRingCapacityBytes);
     atomic_store_explicit(&gVPD.clockAnchorHostTime, AudioGetCurrentHostTime(), memory_order_relaxed);
 }
 
@@ -422,11 +633,6 @@ static OSStatus VPD_PlugInGetPropertyDataSize(const AudioObjectPropertyAddress* 
                                               UInt32* outDataSize)
 {
     (void)qualifierDataSize; (void)qualifierData;
-    VPD_LOG("plugin GetPropertyDataSize: selector=%c%c%c%c scope=%c%c%c%c",
-            (char)(address->mSelector >> 24), (char)(address->mSelector >> 16),
-            (char)(address->mSelector >> 8), (char)(address->mSelector),
-            (char)(address->mScope >> 24), (char)(address->mScope >> 16),
-            (char)(address->mScope >> 8), (char)(address->mScope));
     switch (address->mSelector)
     {
         case kAudioObjectPropertyBaseClass:
@@ -982,7 +1188,6 @@ static HRESULT VPD_QueryInterface(void* inDriver, REFIID inUUID, LPVOID* outInte
     Boolean matches = CFEqual(requested, IUnknownUUID)
         || CFEqual(requested, kAudioServerPlugInDriverInterfaceUUID);
     CFRelease(requested);
-    VPD_LOG("QueryInterface: match=%d", (int)matches);
 
     if (matches)
     {
@@ -1022,14 +1227,11 @@ static ULONG VPD_Release(void* inDriver)
 static void* VPD_Factory(CFAllocatorRef allocator, CFUUIDRef typeUUID)
 {
     (void)allocator;
-    VPD_LOG("factory called");
     if (typeUUID == NULL || !CFEqual(typeUUID, kAudioServerPlugInTypeUUID))
     {
-        VPD_LOG("factory: type UUID mismatch, returning NULL");
         return NULL;
     }
     VPD_AddRef(NULL);
-    VPD_LOG("factory: returning driver ref");
     return gAudioServerPlugInDriverRef;
 }
 
@@ -1041,7 +1243,6 @@ static void* VPD_Factory(CFAllocatorRef allocator, CFUUIDRef typeUUID)
 static OSStatus VPD_Initialize(AudioServerPlugInDriverRef inDriver, AudioServerPlugInHostRef inHost)
 {
     (void)inDriver;
-    VPD_LOG("Initialize called, host=%p", inHost);
     gVPD.host = inHost;
     if (atomic_load_explicit(&gVPD.sampleRate, memory_order_relaxed) == 0)
     {
@@ -1115,7 +1316,6 @@ static Boolean VPD_HasProperty(AudioServerPlugInDriverRef inDriver, AudioObjectI
     (void)inDriver; (void)inClientProcessID;
     if (inAddress == NULL || !VPD_IsValidObjectID(inObjectID))
     {
-        VPD_LOG("HasProperty: invalid object %u", (unsigned)inObjectID);
         return false;
     }
     switch (inObjectID)
@@ -1186,26 +1386,6 @@ static OSStatus VPD_GetPropertyDataSize(AudioServerPlugInDriverRef inDriver, Aud
         default:
             return kAudioHardwareBadObjectError;
     }
-    if (vpdSizeResult == noErr && inObjectID != kAudioObjectPlugInObject)
-    {
-        VPD_LOG("GetPropertyDataSize: obj=%u selector=%c%c%c%c scope=%c%c%c%c -> %u bytes",
-                (unsigned)inObjectID,
-                (char)(inAddress->mSelector >> 24), (char)(inAddress->mSelector >> 16),
-                (char)(inAddress->mSelector >> 8), (char)(inAddress->mSelector),
-                (char)(inAddress->mScope >> 24), (char)(inAddress->mScope >> 16),
-                (char)(inAddress->mScope >> 8), (char)(inAddress->mScope),
-                (unsigned)*outDataSize);
-    }
-    else if (vpdSizeResult != noErr)
-    {
-        VPD_LOG("GetPropertyDataSize FAILED: obj=%u selector=%c%c%c%c scope=%c%c%c%c err=%d",
-                (unsigned)inObjectID,
-                (char)(inAddress->mSelector >> 24), (char)(inAddress->mSelector >> 16),
-                (char)(inAddress->mSelector >> 8), (char)(inAddress->mSelector),
-                (char)(inAddress->mScope >> 24), (char)(inAddress->mScope >> 16),
-                (char)(inAddress->mScope >> 8), (char)(inAddress->mScope),
-                (int)vpdSizeResult);
-    }
     return vpdSizeResult;
 }
 
@@ -1236,16 +1416,6 @@ static OSStatus VPD_GetPropertyData(AudioServerPlugInDriverRef inDriver, AudioOb
             break;
         default:
             return kAudioHardwareBadObjectError;
-    }
-    if (vpdResult != noErr)
-    {
-        VPD_LOG("GetPropertyData FAILED: obj=%u selector=%c%c%c%c scope=%c%c%c%c err=%d",
-                (unsigned)inObjectID,
-                (char)(inAddress->mSelector >> 24), (char)(inAddress->mSelector >> 16),
-                (char)(inAddress->mSelector >> 8), (char)(inAddress->mSelector),
-                (char)(inAddress->mScope >> 24), (char)(inAddress->mScope >> 16),
-                (char)(inAddress->mScope >> 8), (char)(inAddress->mScope),
-                (int)vpdResult);
     }
     return vpdResult;
 }
@@ -1313,15 +1483,12 @@ static OSStatus VPD_StartIO(AudioServerPlugInDriverRef inDriver, AudioObjectID i
     {
         // First client: start from a clean, empty, freshly clocked loopback.
         VPD_ResetRingAndClock();
-        atomic_store_explicit(&gVPD.dbgMixOutputCalls, 0, memory_order_relaxed);
-        atomic_store_explicit(&gVPD.dbgReadInputCalls, 0, memory_order_relaxed);
         atomic_store_explicit(&gVPD.ioRunning, 1, memory_order_release);
         becameRunning = true;
     }
     pthread_mutex_unlock(&gVPDMutex);
 
     if (becameRunning) { VPD_NotifyRunningChanged(); }
-    VPD_LOG("StartIO: clients=%d", gVPD.ioClientCount);
     return noErr;
 }
 
@@ -1344,13 +1511,64 @@ static OSStatus VPD_StopIO(AudioServerPlugInDriverRef inDriver, AudioObjectID in
     }
     pthread_mutex_unlock(&gVPDMutex);
 
-    if (becameIdle) { VPD_NotifyRunningChanged(); }
-    VPD_LOG("StopIO: clients=%d ringWritten=%llu ringRead=%llu mixCalls=%llu readCalls=%llu",
-            gVPD.ioClientCount,
-            (unsigned long long)atomic_load_explicit(&gVPD.ringBytesWritten, memory_order_relaxed),
-            (unsigned long long)atomic_load_explicit(&gVPD.ringBytesRead, memory_order_relaxed),
-            (unsigned long long)atomic_load_explicit(&gVPD.dbgMixOutputCalls, memory_order_relaxed),
-            (unsigned long long)atomic_load_explicit(&gVPD.dbgReadInputCalls, memory_order_relaxed));
+    if (becameIdle)
+    {
+        VPD_NotifyRunningChanged();
+        os_log(OS_LOG_DEFAULT,
+               "VibePadAudio: IO stopped; ring written=%llu read=%llu futureZeros=%llu staleZeros=%llu writeCycles=%llu zeroWriteCycles=%llu resyncs=%llu",
+               atomic_load_explicit(&gVPD.ringBytesWritten, memory_order_relaxed),
+               atomic_load_explicit(&gVPD.ringBytesRead, memory_order_relaxed),
+               atomic_load_explicit(&gVPD.ringReadFutureFrames, memory_order_relaxed),
+               atomic_load_explicit(&gVPD.ringReadStaleFrames, memory_order_relaxed),
+               atomic_load_explicit(&gVPD.ringWriteCycles, memory_order_relaxed),
+               atomic_load_explicit(&gVPD.ringWriteZeroCycles, memory_order_relaxed),
+               atomic_load_explicit(&gVPD.ringWriteResyncs, memory_order_relaxed));
+        UInt32 idx = atomic_load_explicit(&gVPD.writeTraceIndex, memory_order_relaxed);
+        UInt32 base = idx >= 32 ? idx - 32 : 0;
+        for (UInt32 k = 0; k < 32; k += 8)
+        {
+            UInt32 s[8]; UInt32 f[8]; UInt32 z[8];
+            for (UInt32 j = 0; j < 8; j++)
+            {
+                UInt32 slot = (base + k + j) % 32;
+                s[j] = (UInt32)(gVPD.writeTraceTime[slot] % 1000000000ULL);
+                f[j] = gVPD.writeTraceFrames[slot];
+                z[j] = gVPD.writeTraceZero[slot];
+            }
+            os_log(OS_LOG_DEFAULT,
+                   "VibePadAudio: wt %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u",
+                   s[0], f[0], z[0], s[1], f[1], z[1], s[2], f[2], z[2], s[3], f[3], z[3],
+                   s[4], f[4], z[4], s[5], f[5], z[5], s[6], f[6], z[6], s[7], f[7], z[7]);
+        }
+        UInt32 ridx = atomic_load_explicit(&gVPD.readTraceIndex, memory_order_relaxed);
+        UInt32 rbase = ridx >= 32 ? ridx - 32 : 0;
+        for (UInt32 k = 0; k < 32; k += 8)
+        {
+            UInt32 s[8]; UInt32 f[8]; UInt32 w[8];
+            for (UInt32 j = 0; j < 8; j++)
+            {
+                UInt32 slot = (rbase + k + j) % 32;
+                s[j] = (UInt32)(gVPD.readTraceTime[slot] % 1000000000ULL);
+                f[j] = gVPD.readTraceFrames[slot];
+                w[j] = gVPD.readTraceWanted[slot];
+            }
+            os_log(OS_LOG_DEFAULT,
+                   "VibePadAudio: rt %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u %u,%u,%u",
+                   s[0], f[0], w[0], s[1], f[1], w[1], s[2], f[2], w[2], s[3], f[3], w[3],
+                   s[4], f[4], w[4], s[5], f[5], w[5], s[6], f[6], w[6], s[7], f[7], w[7]);
+        }
+        UInt32 holes = atomic_load_explicit(&gVPD.holeIndex, memory_order_relaxed);
+        UInt32 hcount = holes < 16 ? holes : 16;
+        for (UInt32 j = 0; j < hcount; j++)
+        {
+            UInt32 slot = (holes - hcount + j) % 16;
+            os_log(OS_LOG_DEFAULT,
+                   "VibePadAudio: hole raw=%lld wanted=%lld written=%lld anchor=%lld+%lld",
+                   gVPD.holeRawTime[slot], gVPD.holeFirstWanted[slot],
+                   gVPD.holeWrittenFrames[slot], gVPD.holeAnchorTime[slot],
+                   gVPD.holeAnchorFrame[slot]);
+        }
+    }
     return noErr;
 }
 
@@ -1403,7 +1621,6 @@ static OSStatus VPD_WillDoIOOperation(AudioServerPlugInDriverRef inDriver, Audio
         case kAudioServerPlugInIOOperationMixOutput:
             *outWillDo = true;
             *outWillDoInPlace = true;
-            VPD_LOG("WillDoIOOperation: op=%u willDo=1", (unsigned)inOperationID);
             break;
         default:
             *outWillDo = false;
@@ -1431,45 +1648,21 @@ static OSStatus VPD_DoIOOperation(AudioServerPlugInDriverRef inDriver, AudioObje
                                   const AudioServerPlugInIOCycleInfo* inIOCycleInfo,
                                   void* ioMainBuffer, void* ioSecondaryBuffer)
 {
-    (void)inDriver; (void)inClientID; (void)inIOBufferFrameSize; (void)ioSecondaryBuffer;
+    (void)inDriver; (void)inClientID; (void)ioSecondaryBuffer;
     if (inDeviceObjectID != kVPDObjectIDDevice) { return kAudioHardwareBadObjectError; }
     if (ioMainBuffer == NULL) { return noErr; }
 
     if (inOperationID == kAudioServerPlugInIOOperationMixOutput
         && inStreamObjectID == kVPDObjectIDOutputStream)
     {
-        UInt64 prev = atomic_fetch_add_explicit(&gVPD.dbgMixOutputCalls, 1, memory_order_relaxed);
-        if (prev == 0) {
-            VPD_LOG("DoIOOperation: FIRST mixOutput frames=%u main=%p sec=%p",
-                    (unsigned int)inIOBufferFrameSize, ioMainBuffer, ioSecondaryBuffer);
-        }
         VPD_RingWrite((const UInt8*)ioMainBuffer,
                       (UInt64)inIOBufferFrameSize * kVPDBytesPerFrame, inIOCycleInfo);
-        if (prev % 200 == 199) {
-            VPD_LOG("mix[%llu]: ringWritten=%llu ringRead=%llu",
-                    (unsigned long long)(prev + 1),
-                    (unsigned long long)atomic_load_explicit(&gVPD.ringBytesWritten, memory_order_relaxed),
-                    (unsigned long long)atomic_load_explicit(&gVPD.ringBytesRead, memory_order_relaxed));
-        }
-        atomic_store_explicit(&gVPD.dbgMixOutputBytes,
-                              atomic_load_explicit(&gVPD.ringBytesWritten, memory_order_relaxed),
-                              memory_order_relaxed);
     }
     else if (inOperationID == kAudioServerPlugInIOOperationReadInput
              && inStreamObjectID == kVPDObjectIDInputStream)
     {
-        UInt64 prev = atomic_fetch_add_explicit(&gVPD.dbgReadInputCalls, 1, memory_order_relaxed);
-        if (prev == 0) {
-            VPD_LOG("DoIOOperation: FIRST readInput frames=%u main=%p sec=%p",
-                    (unsigned int)inIOBufferFrameSize, ioMainBuffer, ioSecondaryBuffer);
-        }
-        VPD_RingRead((UInt8*)ioMainBuffer, (UInt64)inIOBufferFrameSize * kVPDBytesPerFrame);
-        if (prev % 200 == 199) {
-            VPD_LOG("read[%llu]: ringWritten=%llu ringRead=%llu",
-                    (unsigned long long)(prev + 1),
-                    (unsigned long long)atomic_load_explicit(&gVPD.ringBytesWritten, memory_order_relaxed),
-                    (unsigned long long)atomic_load_explicit(&gVPD.ringBytesRead, memory_order_relaxed));
-        }
+        VPD_RingRead((UInt8*)ioMainBuffer, (UInt64)inIOBufferFrameSize * kVPDBytesPerFrame,
+                     inIOCycleInfo);
     }
     return noErr;
 }

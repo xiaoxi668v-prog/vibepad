@@ -49,6 +49,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 (cd "$ANDROID_PROJECT" && ./gradlew :app:assembleDebug)
 (cd "$HELPER_PROJECT" && swift build -c release)
+(cd "$HELPER_PROJECT/Driver" && SIGNING_IDENTITY="$SIGNING_IDENTITY" ./build-driver.sh)
 
 mkdir -p "$DIST_DIR"
 if [[ -e "$STAGED_HELPER" ]]; then
@@ -56,10 +57,17 @@ if [[ -e "$STAGED_HELPER" ]]; then
 fi
 
 # 从仓库模板构建 App bundle，不依赖已安装副本
-mkdir -p "$STAGED_HELPER/Contents/MacOS" "$STAGED_HELPER/Contents/Resources"
+mkdir -p "$STAGED_HELPER/Contents/MacOS" "$STAGED_HELPER/Contents/Resources/Driver"
 cp -p "$INFO_PLIST_TEMPLATE" "$STAGED_HELPER/Contents/Info.plist"
 cp -p "$HELPER_PROJECT/Resources/AppIcon.icns" "$STAGED_HELPER/Contents/Resources/AppIcon.icns"
 cp -p "$HELPER_BINARY" "$STAGED_HELPER/Contents/MacOS/vibepad-mac-helper"
+
+# 麦克风驱动及一键安装/卸载脚本随 App 分发，由设置窗口通过系统授权框安装
+ditto "$HELPER_PROJECT/Driver/build/VibePadAudio.driver" \
+  "$STAGED_HELPER/Contents/Resources/Driver/VibePadAudio.driver"
+cp -p "$HELPER_PROJECT/Driver/install-driver.sh" \
+      "$HELPER_PROJECT/Driver/uninstall-driver.sh" \
+      "$STAGED_HELPER/Contents/Resources/Driver/"
 
 codesign --force --deep --options runtime --timestamp=none \
   --sign "$SIGNING_IDENTITY" "$STAGED_HELPER"

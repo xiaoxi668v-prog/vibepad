@@ -77,7 +77,8 @@ Android SDK），按提示装好再跑一次即可。
 - **触控板**：单指移动光标、轻点=左键、双指滚动、双指轻点=右键、
   捏合缩放、三/四指滑动触发 Mission Control 等系统手势。
 - **按住说话**：按住右下角的麦克风按钮说话，松开后语音直通 Mac 上的
-  Typeless 转写（此功能需要先在 Mac 安装 TFFAudio 虚拟声卡，不装也不影响其他功能）。
+  Typeless 转写（首次使用在 Mac 菜单栏「VibePad 设置… → 麦克风驱动」
+  点一次「安装驱动」即可，不装也不影响其他功能）。
 - **换皮肤 / 改灵敏度 / 设置常用 App**：平板点齿轮，或在 Mac 菜单栏
   「VibePad 设置…」里改，两端自动同步。
 
@@ -87,8 +88,8 @@ Android SDK），按提示装好再跑一次即可。
 | --- | --- |
 | 平板一直「正在查找 Mac」 | 确认两台设备在同一个 WiFi；在 Mac 菜单栏重启 Helper |
 | 平板显示已连接但 Mac 没反应 | 辅助功能授权丢了：系统设置里重新打开 VibePad Helper 的开关 |
-| 「按住说话」没反应 | Mac 没装 TFFAudio 虚拟声卡，装上即可；不用此功能可忽略 |
-| 想卸载 | 删除 `~/Applications/VibePad Helper.app`，并删除 `~/Library/LaunchAgents/com.xiaoxi.vibepad.mac-helper.plist`；平板上正常卸载 App |
+| 「按住说话」没反应 | Mac 菜单栏「VibePad 设置… → 麦克风驱动」里点「安装驱动…」；不用此功能可忽略 |
+| 想卸载 | 先在「VibePad 设置… → 麦克风驱动」里点「卸载」，再删除 `~/Applications/VibePad Helper.app` 和 `~/Library/LaunchAgents/com.xiaoxi.vibepad.mac-helper.plist`；平板上正常卸载 App |
 
 ## 给开发者
 
@@ -96,7 +97,8 @@ Android SDK），按提示装好再跑一次即可。
 
 ```text
 android/     安卓平板 App（Kotlin，包名 com.xiaoxi.vibepad）
-mac-helper/  Mac 菜单栏 Helper（Swift，Bundle ID com.xiaoxi.vibepad.helper）
+mac-helper/  Mac 菜单栏 Helper（Swift，Bundle ID com.xiaoxi.vibepad.helper）与
+             自研 HAL 音频驱动（Driver/，AudioServerPlugIn 回环声卡）
 designs/     平板端三套 UI 皮肤（01 经典黑 / 02 深空专业 / 05 双手操控）与设计源码
 scripts/     发布脚本与 LaunchAgent 模板
 docs/assets/ README 用到的图标与真机截图
@@ -111,9 +113,9 @@ backups/     安装前自动备份（本地产出，不进 git）
   “辅助功能”权限，而 ad-hoc 签名每次构建都会变成“新应用”并静默丢失授权，
   所以脚本强制要求固定身份，见 [mac-helper/README.md](mac-helper/README.md)。
 - Android 9（API 28）以上的横屏平板，JDK 17 与 Android SDK。
-- 麦克风直通功能额外依赖 TFFAudio 虚拟回环声卡（设备 UID
-  `com.toofifi.audio.Loopback_v001`）。未安装时触控、键盘、Touch Bar 照常可用，
-  仅“按住说话”不可用，Helper 启动日志会提示未找到该设备。
+- 麦克风直通使用内置的自研 HAL 驱动 VibePadAudio（源码在 `mac-helper/Driver/`，
+  随 App 打包，设置窗口一键安装/卸载，无需第三方虚拟声卡）。未安装驱动时触控、
+  键盘、Touch Bar 照常可用，仅“按住说话”不可用。
 
 ### 构建与发布
 

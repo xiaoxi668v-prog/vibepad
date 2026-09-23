@@ -15,6 +15,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let mouseValue = NSTextField(labelWithString: "1.0x")
     private let scrollValue = NSTextField(labelWithString: "1.0x")
     private let statusLabel = NSTextField(labelWithString: "")
+    private let driverButton = NSButton(title: "安装驱动…", target: nil, action: nil)
+    private let uninstallDriverButton = NSButton(title: "卸载", target: nil, action: nil)
+    private let driverStatusLabel = NSTextField(labelWithString: "")
+    private var driverBusy = false
     private var suppressActions = false
 
     init(store: PadConfigStore, loadApps: @escaping (Bool, @escaping ([PadAppSummary]) -> Void) -> Void) {
@@ -32,6 +36,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         if window == nil { window = makeWindow() }
         render(store.snapshot())
         refreshApps(rescan: false)
+        refreshDriverStatus()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
@@ -97,6 +102,25 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         content.addArrangedSubview(sliderRow("滚动灵敏度", scrollSlider, scrollValue))
 
         content.addArrangedSubview(separator())
+        content.addArrangedSubview(sectionTitle("麦克风驱动"))
+        content.addArrangedSubview(hint("安装后平板即可作为 Mac 的麦克风：在 Typeless 等录音 App 里选择「VibePad Microphone」。"))
+        driverButton.target = self
+        driverButton.action = #selector(driverButtonClicked)
+        driverButton.bezelStyle = .rounded
+        uninstallDriverButton.target = self
+        uninstallDriverButton.action = #selector(uninstallDriverClicked)
+        uninstallDriverButton.bezelStyle = .rounded
+        let driverRow = NSStackView(views: [driverButton, uninstallDriverButton])
+        driverRow.orientation = .horizontal
+        driverRow.spacing = 8
+        content.addArrangedSubview(driverRow)
+        driverStatusLabel.font = .systemFont(ofSize: 11)
+        driverStatusLabel.textColor = .secondaryLabelColor
+        driverStatusLabel.lineBreakMode = .byWordWrapping
+        driverStatusLabel.preferredMaxLayoutWidth = 380
+        content.addArrangedSubview(driverStatusLabel)
+
+        content.addArrangedSubview(separator())
         statusLabel.font = .systemFont(ofSize: 11)
         statusLabel.textColor = .secondaryLabelColor
         statusLabel.stringValue = "改动会立刻同步到已连接的平板；平板上的改动也会回写到这里。"
@@ -105,7 +129,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         content.addArrangedSubview(statusLabel)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 640),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -243,6 +267,65 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     @objc private func rescanApps() {
         refreshApps(rescan: true)
+    }
+
+    // MARK: - 麦克风驱动
+
+    private func refreshDriverStatus() {
+        let installed = DriverInstaller.isInstalled
+        driverButton.title = installed ? "重新安装驱动…" : "安装驱动…"
+        driverButton.isEnabled = !driverBusy && (installed || DriverInstaller.bundledDriverAvailable)
+        uninstallDriverButton.isHidden = !installed
+        uninstallDriverButton.isEnabled = !driverBusy
+        guard !driverBusy else { return }
+        driverStatusLabel.stringValue = installed
+            ? "已安装。录音 App 里选择「VibePad Microphone」即可收音。"
+            : (DriverInstaller.bundledDriverAvailable ? "未安装。" : "安装包内缺少驱动文件。")
+    }
+
+    @objc private func driverButtonClicked() {
+        let reinstalling = DriverInstaller.isInstalled
+        let alert = NSAlert()
+        alert.messageText = reinstalling ? "重新安装麦克风驱动？" : "安装麦克风驱动？"
+        alert.informativeText = "安装过程中 Mac 的声音会中断约 2 秒。系统会弹出密码框，请输入开机密码授权。"
+        alert.addButton(withTitle: "安装")
+        alert.addButton(withTitle: "取消")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        runDriverTask(installing: true)
+    }
+
+    @objc private func uninstallDriverClicked() {
+        let alert = NSAlert()
+        alert.messageText = "卸载麦克风驱动？"
+        alert.informativeText = "卸载后平板麦克风功能不可用，「VibePad Microphone」会从 Mac 上消失。"
+        alert.addButton(withTitle: "卸载")
+        alert.addButton(withTitle: "取消")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        runDriverTask(installing: false)
+    }
+
+    private func runDriverTask(installing: Bool) {
+        driverBusy = true
+        refreshDriverStatus()
+        driverStatusLabel.stringValue = installing ? "正在安装…" : "正在卸载…"
+        let finish = { [weak self] (ok: Bool, message: String) in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.driverBusy = false
+                    if ok, installing { _ = AggregateMicrophone.ensureAvailable() }
+                    self.refreshDriverStatus()
+                    if !ok, message != "已取消。" {
+                        self.driverStatusLabel.stringValue = "失败：\(message)"
+                    }
+                }
+            }
+        }
+        if installing {
+            DriverInstaller.install(completion: finish)
+        } else {
+            DriverInstaller.uninstall(completion: finish)
+        }
     }
 
     @objc private func mouseSensitivityChanged() {
