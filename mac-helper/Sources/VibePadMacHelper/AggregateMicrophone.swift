@@ -1,31 +1,37 @@
 import CoreAudio
 import Foundation
 
-/// Publishes TFFAudio through a public Aggregate Device. Typeless intentionally
-/// hides virtual-transport devices, but accepts an Aggregate input device.
+/// Publishes the VibePadAudio loopback device through a public Aggregate Device. Typeless
+/// intentionally hides virtual-transport devices, but accepts an Aggregate input device.
 /// The aggregate is persistent at the CoreAudio layer so Typeless keeps a stable
 /// UID across helper restarts; the helper only creates it when it is missing.
 enum AggregateMicrophone {
     static let name = "VibePad Microphone"
     static let uid = "com.xiaoxi.vibepad.microphone"
-    private static let tffUID = AudioSink.targetDeviceUID
+    private static let driverUID = AudioSink.targetDeviceUID
 
     @discardableResult
     static func ensureAvailable() -> Bool {
-        if let existing = findDevice(uid: uid), inputChannelCount(existing) > 0 {
-            print("VibePad aggregate microphone is available (device \(existing))")
-            return true
+        if let existing = findDevice(uid: uid) {
+            if subDeviceUIDs(existing).contains(driverUID), inputChannelCount(existing) > 0 {
+                print("VibePad aggregate microphone is available (device \(existing))")
+                return true
+            }
+            // Stale aggregate from an older install (e.g. still wrapping TFFAudio):
+            // destroy it so it gets recreated around the current VibePadAudio device.
+            AudioHardwareDestroyAggregateDevice(existing)
+            print("Destroyed stale VibePad aggregate microphone (device \(existing))")
         }
-        guard findDevice(uid: tffUID) != nil else {
-            print("VibePad aggregate microphone unavailable: TFFAudio was not found")
+        guard findDevice(uid: driverUID) != nil else {
+            print("VibePad aggregate microphone unavailable: the VibePadAudio device was not found")
             return false
         }
 
         let description: [String: Any] = [
             kAudioAggregateDeviceNameKey: name,
             kAudioAggregateDeviceUIDKey: uid,
-            kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: tffUID]],
-            kAudioAggregateDeviceMasterSubDeviceKey: tffUID,
+            kAudioAggregateDeviceSubDeviceListKey: [[kAudioSubDeviceUIDKey: driverUID]],
+            kAudioAggregateDeviceMasterSubDeviceKey: driverUID,
             kAudioAggregateDeviceIsPrivateKey: false,
             kAudioAggregateDeviceIsStackedKey: false
         ]
@@ -79,6 +85,23 @@ enum AggregateMicrophone {
             return nil
         }
         return value?.takeUnretainedValue() as String?
+    }
+
+    private static func subDeviceUIDs(_ deviceID: AudioDeviceID) -> [String] {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioAggregateDevicePropertyFullSubDeviceList,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(deviceID, &address, 0, nil, &size) == noErr, size > 0 else {
+            return []
+        }
+        var value: Unmanaged<CFArray>?
+        var valueSize = UInt32(MemoryLayout<Unmanaged<CFArray>?>.size)
+        guard AudioObjectGetPropertyData(deviceID, &address, 0, nil, &valueSize, &value) == noErr,
+              let list = value?.takeUnretainedValue() as? [[String: Any]] else { return [] }
+        return list.compactMap { $0[kAudioSubDeviceUIDKey as String] as? String }
     }
 
     private static func inputChannelCount(_ deviceID: AudioDeviceID) -> Int {

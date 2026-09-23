@@ -14,9 +14,9 @@ private func vibePadAudioQueueCallback(
 
 /// Owns the single virtual-audio output used by all authenticated VibePad sessions.
 /// Network PCM is 24 kHz mono; output is explicitly converted to the native
-/// 48 kHz stereo PCM accepted by TFFAudio. All mutable state lives on `queue`.
+/// 48 kHz stereo PCM accepted by the VibePadAudio HAL driver. All mutable state lives on `queue`.
 final class AudioSink {
-    static let targetDeviceUID = "com.toofifi.audio.Loopback_v001"
+    static let targetDeviceUID = "com.xiaoxi.vibepad.audio.device"
 
     private static let requiredSampleRate: UInt32 = 24_000
     private static let requiredChannels: UInt8 = 1
@@ -58,12 +58,12 @@ final class AudioSink {
                 return false
             }
             guard owner == nil || owner == requestedOwner else {
-                print("Rejected VibePad audio start because TFFAudio is already in use")
+                print("Rejected VibePad audio start because the VibePadAudio device is already in use")
                 return false
             }
             stopLocked(reason: "restart")
             guard Self.targetOutputDeviceExists() else {
-                print("VibePad audio unavailable: TFFAudio UID \(Self.targetDeviceUID) was not found as an output device")
+                print("VibePad audio unavailable: VibePadAudio UID \(Self.targetDeviceUID) was not found as an output device")
                 return false
             }
 
@@ -104,7 +104,7 @@ final class AudioSink {
             }
             guard routeStatus == noErr else {
                 AudioQueueDispose(createdQueue, true)
-                print("VibePad audio could not direct AudioQueue to TFFAudio: OSStatus \(routeStatus)")
+                print("VibePad audio could not direct AudioQueue to VibePadAudio: OSStatus \(routeStatus)")
                 return false
             }
 
@@ -129,7 +129,7 @@ final class AudioSink {
             outputQueue = createdQueue
             allBuffers = allocated
             freeBuffers = allocated
-            print("VibePad audio stream \(requestedStreamID) opened on directed TFFAudio AudioQueue (80 ms prebuffer)")
+            print("VibePad audio stream \(requestedStreamID) opened on directed VibePadAudio AudioQueue (80 ms prebuffer)")
             return true
         }
     }
@@ -195,7 +195,7 @@ final class AudioSink {
             self.scheduledFrames = max(0, self.scheduledFrames - Self.outputFramesPerPacket)
             // A virtual AudioQueue may return buffers as soon as their bytes have
             // entered the driver, before the loopback input exposes those samples.
-            // Do not reset here: doing so truncates TFFAudio's internal pipeline.
+            // Do not reset here: doing so truncates the VibePadAudio driver's internal pipeline.
             // AudioQueue itself emits silence during a genuine producer gap and
             // resumes when the next packet is enqueued.
         }
